@@ -17,7 +17,7 @@ public class ReferenceExtractor {
 		List<VdjRegion> regions = VdjRegion.loadRegions(regionFile, true);
 		
 		for (VdjRegion region : regions) {
-			String seq = c2r.getSequence(region.chromosome, region.start, region.stop-region.start);
+			String seq = c2r.getSequence(region.chromosome, region.start+1, region.stop-region.start-1);
 		
 			if (rcInBothDirections) {
 				output.write(">" + region.name + "_+\n");
