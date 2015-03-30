@@ -3,12 +3,12 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>abra</groupId>
-  <artifactId>abra</artifactId>
+  <groupId>vdj</groupId>
+  <artifactId>vdj</artifactId>
   <version>0.01-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>abra</name>
+  <name>vdj</name>
   <url>http://maven.apache.org</url>
 
   <properties>
