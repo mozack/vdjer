@@ -142,13 +142,17 @@ char matches_window(char* contig) {
 void find_candidates(char* v_file, char* j_file, char* contig_file) {
 	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 
+	fprintf(stderr, "Loading vmers\n");
 	load_kmers(v_file, vmers);
+	fprintf(stderr, "Loading jmers\n");
 	load_kmers(j_file, jmers);
 
 //	char match = matches_vmer(5205);
 //	printf("match1: %d\n", match);
 //	match = matches_vmer(3000000000);
 //	printf("match2: %d\n", match);
+
+	fprintf(stderr, "Processing contigs\n");
 
 	FILE* fp = fopen(contig_file, "r");
 
