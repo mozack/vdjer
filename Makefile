@@ -23,3 +23,6 @@ vdj25:
 
 seqd:
 	g++ -g $(SRCDIR)/seq_dist.c -o seqd
+
+vjf:
+	g++ -g -I$(SRCDIR) $(SRCDIR)/vj_filter.c -o vjf
