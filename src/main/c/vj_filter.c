@@ -85,7 +85,7 @@ void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* 
 	unsigned long kmer;
 	int freq;
 	while (fscanf(in, "%lu\t%d\n", &kmer, &freq) == 2) {
-		printf("read: %lu, %d\n", kmer, freq);
+//		printf("read: %lu, %d\n", kmer, freq);
 		kmers->insert(kmer);
 	}
 
