@@ -141,6 +141,7 @@ char matches_window(char* contig) {
 
 void find_candidates(char* v_file, char* j_file, char* contig_file) {
 	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
+	jmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 
 	fprintf(stderr, "Loading vmers\n");
 	fflush(stderr);
