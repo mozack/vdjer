@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
 
+using namespace std;
 using google::sparse_hash_set;
 
 // Rough defaults with vmer and jmer 10 bases from edges of annotated v and j genes
@@ -107,7 +109,7 @@ char matches_window(char* contig) {
 
 	int len = strlen(contig) - SEQ_LEN;
 	for (int i=0; i<len; i++) {
-		unsigned long kmer = seq_to_int(contig_index));
+		unsigned long kmer = seq_to_int(contig_index);
 		if (matches_vmer(kmer)) {
 			v_indices.push_back(i);
 		}
@@ -121,11 +123,11 @@ char matches_window(char* contig) {
 
 	// TODO: traverse vectors in parallel and more intelligently.
 	//       no need to compare all values
-	vector<unsigned long>::const_iterator v;
+	vector<int>::const_iterator v;
 	for (v=v_indices.begin(); v!=v_indices.end(); v++) {
-		vector<unsigned long>::const_iterator j;
+		vector<int>::const_iterator j;
 		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
-			int window = j - v - SEQ_LEN;
+			int window = *j - *v - SEQ_LEN;
 
 			if (window >= MIN_WINDOW && window <= MAX_WINDOW) {
 				// We've found a match, return
@@ -160,7 +162,7 @@ void find_candidates(char* v_file, char* j_file, char* contig_file) {
 
 	fclose(fp);
 }
-T
+
 int main(int argc, char** argv) {
 	char* v_file = argv[1];
 	char* j_file = argv[2];

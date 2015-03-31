@@ -22,7 +22,7 @@ vdj25:
 	g++ -g -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $(SRCDIR)/assembler2.5_vdj.c $(SRCDIR)/seq_score.c -o vdj2.5
 
 seqd:
-	g++ -g $(SRCDIR)/seq_dist.c -o seqd
+	g++ -g $(SRCDIR)/seq_dist.c $(SRCDIR)/seq_to_kmer.c -o seqd
 
 vjf:
-	g++ -g -I$(SRCDIR) $(SRCDIR)/vj_filter.c -o vjf
+	g++ -g -I$(SRCDIR) $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c -o vjf
