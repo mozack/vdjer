@@ -143,8 +143,10 @@ void find_candidates(char* v_file, char* j_file, char* contig_file) {
 	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 
 	fprintf(stderr, "Loading vmers\n");
+	fflush(stderr);
 	load_kmers(v_file, vmers);
 	fprintf(stderr, "Loading jmers\n");
+	fflush(stderr);
 	load_kmers(j_file, jmers);
 
 //	char match = matches_vmer(5205);
@@ -153,6 +155,7 @@ void find_candidates(char* v_file, char* j_file, char* contig_file) {
 //	printf("match2: %d\n", match);
 
 	fprintf(stderr, "Processing contigs\n");
+	fflush(stderr);
 
 	FILE* fp = fopen(contig_file, "r");
 
@@ -165,6 +168,9 @@ void find_candidates(char* v_file, char* j_file, char* contig_file) {
 	}
 
 	fclose(fp);
+
+	fprintf(stderr, "Done");
+	fflush(stderr);
 }
 
 int main(int argc, char** argv) {
