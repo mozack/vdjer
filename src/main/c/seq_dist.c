@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include "seq_dist.h"
 
 using namespace std;
 
 #define MAX_16_BASES 4294967295
-#define SEQ_LEN 16
 #define MAX_DIST 5
 
 int base_val(char base) {
