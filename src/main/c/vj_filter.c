@@ -79,14 +79,16 @@ sparse_hash_set<unsigned long, kmer_hash, eqkmer>* vmers;
 sparse_hash_set<unsigned long, kmer_hash, eqkmer>* jmers;
 
 
-void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* kmers) {
+void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* kmers, int max_dist) {
 	FILE* in = fopen(input, "r");
 
 	unsigned long kmer;
 	int freq;
 	while (fscanf(in, "%lu\t%d\n", &kmer, &freq) == 2) {
 //		printf("read: %lu, %d\n", kmer, freq);
-		kmers->insert(kmer);
+		if (freq <= max_dist) {
+			kmers->insert(kmer);
+		}
 	}
 
 	fclose(in);
@@ -141,16 +143,16 @@ void print_windows(char* contig) {
 	}
 }
 
-void find_candidates(char* v_file, char* j_file, char* contig_file) {
+void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist) {
 	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 	jmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 
 	fprintf(stderr, "Loading vmers\n");
 	fflush(stderr);
-	load_kmers(v_file, vmers);
+	load_kmers(v_file, vmers, max_dist);
 	fprintf(stderr, "Loading jmers\n");
 	fflush(stderr);
-	load_kmers(j_file, jmers);
+	load_kmers(j_file, jmers, max_dist);
 
 //	char match = matches_vmer(5205);
 //	printf("match1: %d\n", match);
@@ -180,6 +182,7 @@ int main(int argc, char** argv) {
 	char* v_file = argv[1];
 	char* j_file = argv[2];
 	char* contig_file = argv[3];
+	int max_dist = atoi(argv[4]);
 
-	find_candidates(v_file, j_file, contig_file);
+	find_candidates(v_file, j_file, contig_file, max_dist);
 }
