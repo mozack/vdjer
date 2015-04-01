@@ -102,7 +102,7 @@ char matches_jmer(unsigned long kmer) {
 	return it != jmers->end();
 }
 
-char matches_window(char* contig) {
+void print_windows(char* contig) {
 	char* contig_index = contig;
 	vector<int> v_indices;
 	vector<int> j_indices;
@@ -131,12 +131,16 @@ char matches_window(char* contig) {
 
 			if (window >= MIN_WINDOW && window <= MAX_WINDOW) {
 				// We've found a match, return
-				return true;
+				//return true;
+				char win[256];
+				memset(win, 0, 256);
+				strncpy(win, contig+*v+SEQ_LEN, window);
+				printf("%s\n", win);
 			}
 		}
 	}
 
-	return false;
+	return NULL;
 }
 
 void find_candidates(char* v_file, char* j_file, char* contig_file) {
@@ -163,8 +167,8 @@ void find_candidates(char* v_file, char* j_file, char* contig_file) {
 	char contig[100000];
 
 	while (fgets(contig, 100000, fp) != NULL) {
-		if(contig[0] != '>' && matches_window(contig)) {
-			printf("%s\n", contig);
+		if(contig[0] != '>') {
+			get_windows(contig));
 		}
 	}
 
