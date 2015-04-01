@@ -139,8 +139,6 @@ void print_windows(char* contig) {
 			}
 		}
 	}
-
-	return NULL;
 }
 
 void find_candidates(char* v_file, char* j_file, char* contig_file) {
@@ -168,7 +166,7 @@ void find_candidates(char* v_file, char* j_file, char* contig_file) {
 
 	while (fgets(contig, 100000, fp) != NULL) {
 		if(contig[0] != '>') {
-			get_windows(contig));
+			print_windows(contig);
 		}
 	}
 
