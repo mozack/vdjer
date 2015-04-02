@@ -175,21 +175,34 @@ void print_windows(char* contig) {
 			if (window >= MIN_WINDOW && window <= MAX_WINDOW && strlen(contig) > 2*FRAME_PADDING+window) {
 				// We've found a match
 
-				int frame = find_frame(contig, *v, window);
-				if (frame >= 0) {
-
-					int shift = 0;
-					if (frame == 1) {
-						shift = -2;
-					} else if (frame == 2) {
-						shift = -1;
-					}
-
-					char win[256];
-					memset(win, 0, 256);
-					strncpy(win, contig+*v+SEQ_LEN+shift, window);
-					printf("%s\n", win);
+				int shift = (*v+SEQ_LEN) % 3;
+				if (shift == 1) {
+					shift = -2;
+				} else if (shift == 2) {
+					shift = -1;
 				}
+
+				char win[256];
+				memset(win, 0, 256);
+				strncpy(win, contig+*v+SEQ_LEN+shift, window);
+				printf("%s\n", win);
+
+//
+//				int frame = find_frame(contig, *v, window);
+//				if (frame >= 0) {
+//
+//					int shift = 0;
+//					if (frame == 1) {
+//						shift = -2;
+//					} else if (frame == 2) {
+//						shift = -1;
+//					}
+//
+//					char win[256];
+//					memset(win, 0, 256);
+//					strncpy(win, contig+*v+SEQ_LEN+shift, window);
+//					printf("%s\n", win);
+//				}
 			}
 		}
 	}
