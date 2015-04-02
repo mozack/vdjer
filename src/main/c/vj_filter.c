@@ -14,6 +14,9 @@ using google::sparse_hash_set;
 #define MIN_WINDOW 10
 #define MAX_WINDOW 110
 
+#define FRAME_PADDING 100
+#define VJ_SEARCH_END 1000
+
 struct eqkmer
 {
   bool operator()(unsigned long l1, unsigned long l2) const
@@ -78,7 +81,6 @@ struct kmer_hash
 sparse_hash_set<unsigned long, kmer_hash, eqkmer>* vmers;
 sparse_hash_set<unsigned long, kmer_hash, eqkmer>* jmers;
 
-
 void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* kmers, int max_dist) {
 	FILE* in = fopen(input, "r");
 
@@ -104,13 +106,52 @@ char matches_jmer(unsigned long kmer) {
 	return it != jmers->end();
 }
 
+char is_stop_codon(char* codon) {
+	return strncmp(codon, "TAG", 3) == 0 || strncmp(codon, "TAA", 3) == 0 || strncmp(codon, "TGA", 3) == 0;
+}
+
+char is_in_frame(int start, int end, int frame, char* contig) {
+	for (int i=start+frame; i<end+frame-3; i+=3) {
+		char* codon = contig + i;
+		if (is_stop_codon(codon)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+// Look for a window of a few hundred bases without a stop codon
+int find_frame(char* contig, int v, int window) {
+
+	int start = v - FRAME_PADDING;
+	int end = v + window + FRAME_PADDING;
+
+	int frame = -1;;
+
+	for (int i=0; i<3; i++) {
+		if (is_in_frame(start, end, i, contig)) {
+			if (frame != -1) {
+				fprintf(stderr, "Multiple frames in: %s : %d\n", contig, v);
+			} else {
+				frame = i;
+			}
+		}
+	}
+
+	return frame;
+}
+
 void print_windows(char* contig) {
 	char* contig_index = contig;
 	vector<int> v_indices;
 	vector<int> j_indices;
 
 	int len = strlen(contig) - SEQ_LEN;
-	for (int i=0; i<len; i++) {
+
+	// Start at least FRAME_PADDING bases away from beginning of contig
+	// Stop at end of contig or VJ_SEARCH_END bases into contig
+	for (int i=FRAME_PADDING; i<len && i<VJ_SEARCH_END; i++) {
 		unsigned long kmer = seq_to_int(contig_index);
 		if (matches_vmer(kmer)) {
 			v_indices.push_back(i);
@@ -131,13 +172,24 @@ void print_windows(char* contig) {
 		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
 			int window = *j - *v - SEQ_LEN;
 
-			if (window >= MIN_WINDOW && window <= MAX_WINDOW) {
-				// We've found a match, return
-				//return true;
-				char win[256];
-				memset(win, 0, 256);
-				strncpy(win, contig+*v+SEQ_LEN, window);
-				printf("%s\n", win);
+			if (window >= MIN_WINDOW && window <= MAX_WINDOW && strlen(contig) > 2*FRAME_PADDING+window) {
+				// We've found a match
+
+				int frame = find_frame(contig, *v, window);
+				if (frame >= 0) {
+
+					int shift = 0;
+					if (frame == 1) {
+						shift = -2;
+					} else if (frame == 2) {
+						shift = -1;
+					}
+
+					char win[256];
+					memset(win, 0, 256);
+					strncpy(win, contig+*v+SEQ_LEN+shift, window);
+					printf("%s\n", win);
+				}
 			}
 		}
 	}
