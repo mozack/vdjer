@@ -29,7 +29,7 @@ int base_val(char base) {
 
 
 unsigned long seq_to_int(const char* seq) {
-	int val = 0;
+	unsigned long val = 0;
 
 	for (int i=0; i<SEQ_LEN; i++) {
 		val = val << 2;
@@ -38,3 +38,9 @@ unsigned long seq_to_int(const char* seq) {
 
 	return val;
 }
+
+/*
+int main(int argc, char** argv) {
+	printf("%lu\n", seq_to_int("CACGGCCGTATATTTC"));
+}
+*/
