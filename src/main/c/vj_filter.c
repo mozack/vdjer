@@ -149,9 +149,7 @@ void print_windows(char* contig) {
 
 	int len = strlen(contig) - SEQ_LEN;
 
-	// Start at least FRAME_PADDING bases away from beginning of contig
-	// Stop at end of contig or VJ_SEARCH_END bases into contig
-	for (int i=FRAME_PADDING; i<len && i<VJ_SEARCH_END; i++) {
+	for (int i=0; i<len; i++) {
 		unsigned long kmer = seq_to_int(contig_index);
 		if (matches_vmer(kmer)) {
 			v_indices.push_back(i);
@@ -170,21 +168,15 @@ void print_windows(char* contig) {
 	for (v=v_indices.begin(); v!=v_indices.end(); v++) {
 		vector<int>::const_iterator j;
 		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
-			int window = *j - *v - SEQ_LEN;
+//			int window = *j - *v - SEQ_LEN;
+			int window = *j - *v;
 
-			if (window >= MIN_WINDOW && window <= MAX_WINDOW && strlen(contig) > 2*FRAME_PADDING+window) {
+			if (window >= MIN_WINDOW+SEQ_LEN && window <= MAX_WINDOW+SEQ_LEN && strlen(contig) > window) {
 				// We've found a match
-
-				int shift = (*v+SEQ_LEN) % 3;
-				if (shift == 1) {
-					shift = -2;
-				} else if (shift == 2) {
-					shift = -1;
-				}
-
 				char win[256];
 				memset(win, 0, 256);
-				strncpy(win, contig+*v+SEQ_LEN+shift, window);
+//				strncpy(win, contig+*v+SEQ_LEN, window);
+				strncpy(win, contig+*v, window);
 				printf("%s\n", win);
 
 //
