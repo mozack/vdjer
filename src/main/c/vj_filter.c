@@ -193,8 +193,8 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		ch[3] = 0;
 
 		if (strncmp(contig+i, "TGT", 3) == 0 || strncmp(contig+i, "TGC", 3) == 0) {
+//			fprintf(stderr, "C @ %d\n", i);
 			v_indices.push_back(i);
-			break;
 		}
 	}
 
@@ -205,9 +205,12 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		ch[3] = 0;
 
 		if (strncmp(contig+i, "TGG", 3) == 0) {
+//			fprintf(stderr, "W @ %d\n", i);
 			j_indices.push_back(i);
 		}
 	}
+
+	char* cdr3 = cdr3_block;
 
 	vector<int>::const_iterator v;
 	for (v=v_indices.begin(); v!=v_indices.end(); v++) {
@@ -215,8 +218,6 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
 			// For each C, (W/F) combo, check the distance and frame
 			int window = *j - *v + 3;
-
-			char* cdr3 = cdr3_block;
 
 			// TODO: Parameterize min/max window
 			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW) {
@@ -304,7 +305,9 @@ void print_windows(char* contig) {
 
 	sparse_hash_set<const char*, my_hash, eqstr>::const_iterator it;
 	for (it=cdr3_seq.begin(); it!=cdr3_seq.end(); it++) {
+
 		if (!is_sub_string(*it, cdr3_seq)) {
+
 			int window = strlen(*it);
 
 			// Find current CDR3 string in contig
