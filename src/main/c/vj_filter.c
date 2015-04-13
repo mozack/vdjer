@@ -12,10 +12,13 @@ using google::sparse_hash_set;
 
 // Rough defaults with vmer and jmer 10 bases from edges of annotated v and j genes
 #define MIN_WINDOW 10
-#define MAX_WINDOW 110
+#define MAX_WINDOW 90
 
 #define FRAME_PADDING 100
 #define VJ_SEARCH_END 1000
+
+// Anchors are located this many bases away from germline 3' and 5' ends of the V and J regions respectively
+#define ANCHOR_PADDING 10
 
 struct eqkmer
 {
@@ -78,6 +81,24 @@ struct kmer_hash
 	}
 };
 
+struct eqstr
+{
+  bool operator()(const char* s1, const char* s2) const
+  {
+    return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
+  }
+};
+
+struct my_hash
+{
+	uint64_t operator()(const char* seq) const
+	{
+		uint64_t h = MurmurHash64A(seq, strlen(seq), 97);
+		return h;
+		//return chunk;
+	}
+};
+
 sparse_hash_set<unsigned long, kmer_hash, eqkmer>* vmers;
 sparse_hash_set<unsigned long, kmer_hash, eqkmer>* jmers;
 
@@ -121,6 +142,17 @@ char is_in_frame(int start, int end, int frame, char* contig) {
 	return true;
 }
 
+char is_in_frame(char* seq) {
+	for (int i=0; i<strlen(seq)-2; i+=3) {
+		char* codon = seq + i;
+		if (is_stop_codon(codon)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 // Look for a window of a few hundred bases without a stop codon
 int find_frame(char* contig, int v, int window) {
 
@@ -142,7 +174,93 @@ int find_frame(char* contig, int v, int window) {
 	return frame;
 }
 
+void find_conserved_aminos(int v_index, int j_index, char* contig,
+		sparse_hash_set<const char*, my_hash, eqstr>& cdr3_seq, char* cdr3_block) {
+	// BCR heavy has conserved Cysteine in V and Tryptophan in J
+	// BCR light, TCR light & heavy have conserved Cysteine in V and Phenylalaline in J
+	// Cysteine : C :  TGT,TGC
+	// Tryptophan : W : TGG
+	// Phenylalaline : F : TTC,TTT
+	//
+	// See: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC441550/
+
+	vector<int> v_indices;
+	vector<int> j_indices;
+
+	for (int i=v_index; i<SEQ_LEN+ANCHOR_PADDING+v_index-2; i++) {
+		char ch[4];
+		strncpy(ch, contig+i, 3);
+		ch[3] = 0;
+
+		if (strncmp(contig+i, "TGT", 3) == 0 || strncmp(contig+i, "TGC", 3) == 0) {
+			v_indices.push_back(i);
+			break;
+		}
+	}
+
+	// TODO: Parameterize for Phenylalaline
+	for (int i=j_index-ANCHOR_PADDING; i<SEQ_LEN+j_index-2; i++) {
+		char ch[4];
+		strncpy(ch, contig+i, 3);
+		ch[3] = 0;
+
+		if (strncmp(contig+i, "TGG", 3) == 0) {
+			j_indices.push_back(i);
+		}
+	}
+
+	vector<int>::const_iterator v;
+	for (v=v_indices.begin(); v!=v_indices.end(); v++) {
+		vector<int>::const_iterator j;
+		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
+			// For each C, (W/F) combo, check the distance and frame
+			int window = *j - *v + 3;
+
+			char* cdr3 = cdr3_block;
+
+			// TODO: Parameterize min/max window
+			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW) {
+
+				strncpy(cdr3, contig+*v, window);
+				cdr3_seq.insert(cdr3);
+				cdr3 += 256;
+/*
+
+				int pad = MAX_WINDOW - window;
+				int vpad = pad / 2;
+				vpad -= vpad % 3;
+				int start = *v - vpad;
+
+				if (strlen(contig) > start+MAX_WINDOW) {
+					char win[256];
+					memset(win, 0, 256);
+					strncpy(win, contig+start, MAX_WINDOW);
+					printf("%s\n", win);
+				}
+*/
+			}
+
+		}
+	}
+}
+
+char is_sub_string(const char* str, sparse_hash_set<const char*, my_hash, eqstr> cdr3_seq) {
+	for (sparse_hash_set<const char*, my_hash, eqstr>::iterator it=cdr3_seq.begin(); it!=cdr3_seq.end(); it++) {
+		if (strstr(*it, str) != NULL && strcmp(*it, str) !=0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void print_windows(char* contig) {
+
+	// Allocate space for up to 1,000,000 CDR3's
+	// TODO - Allocate and re-use buffer
+	char* cdr3_block = (char*) calloc(256*1000000, sizeof(char));
+	sparse_hash_set<const char*, my_hash, eqstr> cdr3_seq;
+
 	char* contig_index = contig;
 	vector<int> v_indices;
 	vector<int> j_indices;
@@ -151,6 +269,7 @@ void print_windows(char* contig) {
 
 	for (int i=0; i<len; i++) {
 		unsigned long kmer = seq_to_int(contig_index);
+
 		if (matches_vmer(kmer)) {
 			v_indices.push_back(i);
 		}
@@ -168,36 +287,58 @@ void print_windows(char* contig) {
 	for (v=v_indices.begin(); v!=v_indices.end(); v++) {
 		vector<int>::const_iterator j;
 		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
-//			int window = *j - *v - SEQ_LEN;
-			int window = *j - *v;
+			int window = *j - *v + SEQ_LEN;
 
-			if (window >= MIN_WINDOW+SEQ_LEN && window <= MAX_WINDOW+SEQ_LEN && strlen(contig) > window) {
-				// We've found a match
-				char win[256];
-				memset(win, 0, 256);
-//				strncpy(win, contig+*v+SEQ_LEN, window);
-				strncpy(win, contig+*v, window);
-				printf("%s\n", win);
+			int pad = SEQ_LEN*2 + ANCHOR_PADDING*2;
 
-//
-//				int frame = find_frame(contig, *v, window);
-//				if (frame >= 0) {
-//
-//					int shift = 0;
-//					if (frame == 1) {
-//						shift = -2;
-//					} else if (frame == 2) {
-//						shift = -1;
-//					}
-//
-//					char win[256];
-//					memset(win, 0, 256);
-//					strncpy(win, contig+*v+SEQ_LEN+shift, window);
-//					printf("%s\n", win);
-//				}
+			if (window >= MIN_WINDOW && window <= MAX_WINDOW+pad && strlen(contig) > window) {
+				find_conserved_aminos(*v, *j, contig, cdr3_seq, cdr3_block);
+				// We've found a potential match
+//				char win[256];
+//				memset(win, 0, 256);
+//				strncpy(win, contig+*v, window);
+//				printf("%s\n", win);
 			}
 		}
 	}
+
+	sparse_hash_set<const char*, my_hash, eqstr>::const_iterator it;
+	for (it=cdr3_seq.begin(); it!=cdr3_seq.end(); it++) {
+		if (!is_sub_string(*it, cdr3_seq)) {
+			int window = strlen(*it);
+
+			// Find current CDR3 string in contig
+			char* start = strstr(contig, *it);
+
+			if (start != NULL) {
+				/*
+				int pad = MAX_WINDOW - window;
+				int vpad = pad / 2;
+				if (vpad % 3 == 1) {
+					vpad += 2;
+				} else if (vpad % 3 == 2) {
+					vpad += 1;
+				}
+				start -= vpad;
+				*/
+
+				int pad = MAX_WINDOW - window;
+				int vpad = pad / 2;
+				vpad -= vpad % 3;
+				start -= vpad;
+
+				if (strlen(start) > MAX_WINDOW) {
+					char win[256];
+					memset(win, 0, 256);
+					strncpy(win, start, MAX_WINDOW);
+
+					printf("%s\n", win);
+				}
+			}
+		}
+	}
+
+	free(cdr3_block);
 }
 
 void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist) {
@@ -236,6 +377,8 @@ void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist
 }
 
 int main(int argc, char** argv) {
+	fprintf(stderr, "Here...\n");
+
 	char* v_file = argv[1];
 	char* j_file = argv[2];
 	char* contig_file = argv[3];
@@ -243,3 +386,4 @@ int main(int argc, char** argv) {
 
 	find_candidates(v_file, j_file, contig_file, max_dist);
 }
+
