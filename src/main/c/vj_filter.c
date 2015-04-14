@@ -255,11 +255,11 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, my_hash, eqstr>
 	return false;
 }
 
-void print_windows(char* contig) {
+void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& windows) {
 
 	// Allocate space for up to 1,000,000 CDR3's
-	// TODO - Allocate and re-use buffer
 	char* cdr3_block = (char*) calloc(256*1000000, sizeof(char));
+
 	sparse_hash_set<const char*, my_hash, eqstr> cdr3_seq;
 
 	char* contig_index = contig;
@@ -314,7 +314,7 @@ void print_windows(char* contig) {
 			char* start = strstr(contig, *it);
 
 			if (start != NULL) {
-				/*
+
 				int pad = MAX_WINDOW - window;
 				int vpad = pad / 2;
 				if (vpad % 3 == 1) {
@@ -323,19 +323,28 @@ void print_windows(char* contig) {
 					vpad += 1;
 				}
 				start -= vpad;
-				*/
 
+				/*
 				int pad = MAX_WINDOW - window;
 				int vpad = pad / 2;
 				vpad -= vpad % 3;
 				start -= vpad;
+				*/
 
 				if (strlen(start) > MAX_WINDOW) {
 					char win[256];
 					memset(win, 0, 256);
 					strncpy(win, start, MAX_WINDOW);
 
-					printf("%s\n", win);
+					if (is_in_frame(win)) {
+						if (windows.find(win) == windows.end()) {
+
+							char* final_win = (char*) calloc(256, sizeof(char));
+							strcpy(final_win, win);
+
+							windows.insert(final_win);
+						}
+					}
 				}
 			}
 		}
@@ -367,10 +376,23 @@ void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist
 
 	char contig[100000];
 
+	sparse_hash_set<const char*, my_hash, eqstr> windows;
+
+	int i = 0;
 	while (fgets(contig, 100000, fp) != NULL) {
 		if(contig[0] != '>') {
-			print_windows(contig);
+//			memset(cdr3_block, 0, 256*1000000);
+			print_windows(contig, windows);
+			if (i++ % 10000 == 0) {
+				fprintf(stderr, "Processed %d contigs\n", i);
+			}
 		}
+	}
+
+	fprintf(stderr, "Outputting windows\n");
+
+	for (sparse_hash_set<const char*, my_hash, eqstr>::iterator it=windows.begin(); it!=windows.end(); it++) {
+		printf("%s\n", *it);
 	}
 
 	fclose(fp);
