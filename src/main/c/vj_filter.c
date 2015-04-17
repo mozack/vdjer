@@ -11,8 +11,11 @@ using namespace std;
 using google::sparse_hash_set;
 
 // Rough defaults with vmer and jmer 10 bases from edges of annotated v and j genes
-#define MIN_WINDOW 10
-#define MAX_WINDOW 90
+//#define MIN_WINDOW 10
+//#define MAX_WINDOW 90
+
+int MIN_WINDOW;
+int MAX_WINDOW;
 
 #define FRAME_PADDING 100
 #define VJ_SEARCH_END 1000
@@ -220,7 +223,7 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 			int window = *j - *v + 3;
 
 			// TODO: Parameterize min/max window
-			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW) {
+			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW && *j >= *v) {
 
 				strncpy(cdr3, contig+*v, window);
 				cdr3_seq.insert(cdr3);
@@ -408,6 +411,8 @@ int main(int argc, char** argv) {
 	char* j_file = argv[2];
 	char* contig_file = argv[3];
 	int max_dist = atoi(argv[4]);
+	MIN_WINDOW = atoi(argv[5]);
+	MAX_WINDOW = atoi(argv[6]);
 
 	find_candidates(v_file, j_file, contig_file, max_dist);
 }
