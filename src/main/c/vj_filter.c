@@ -14,8 +14,11 @@ using google::sparse_hash_set;
 //#define MIN_WINDOW 10
 //#define MAX_WINDOW 90
 
+#define WINDOW_SPAN 90
+
 int MIN_WINDOW;
 int MAX_WINDOW;
+char J_CONSERVED;
 
 #define FRAME_PADDING 100
 #define VJ_SEARCH_END 1000
@@ -207,8 +210,10 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		strncpy(ch, contig+i, 3);
 		ch[3] = 0;
 
-		if (strncmp(contig+i, "TGG", 3) == 0) {
+		if (J_CONSERVED == 'W' && strncmp(contig+i, "TGG", 3) == 0) {
 //			fprintf(stderr, "W @ %d\n", i);
+			j_indices.push_back(i);
+		} else if (J_CONSERVED == 'F' && (strncmp(contig+i, "TTC", 3) == 0 || strncmp(contig+i, "TTT", 3) == 0)) {
 			j_indices.push_back(i);
 		}
 	}
@@ -275,10 +280,12 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 		unsigned long kmer = seq_to_int(contig_index);
 
 		if (matches_vmer(kmer)) {
+//			fprintf(stderr, "v: %d\n", i);
 			v_indices.push_back(i);
 		}
 
 		if (matches_jmer(kmer)) {
+//			fprintf(stderr, "j: %d\n", i);
 			j_indices.push_back(i);
 		}
 
@@ -294,6 +301,8 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 			int window = *j - *v + SEQ_LEN;
 
 			int pad = SEQ_LEN*2 + ANCHOR_PADDING*2;
+
+//			fprintf(stderr, "v: %d, j: %d, window: %d\n", *v, *j, window);
 
 			if (window >= MIN_WINDOW && window <= MAX_WINDOW+pad && strlen(contig) > window) {
 				find_conserved_aminos(*v, *j, contig, cdr3_seq, cdr3_block);
@@ -318,7 +327,7 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 
 			if (start != NULL) {
 
-				int pad = MAX_WINDOW - window;
+				int pad = WINDOW_SPAN - window;
 				int vpad = pad / 2;
 				if (vpad % 3 == 1) {
 					vpad += 2;
@@ -334,10 +343,10 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 				start -= vpad;
 				*/
 
-				if (strlen(start) > MAX_WINDOW) {
+				if (strlen(start) > WINDOW_SPAN) {
 					char win[256];
 					memset(win, 0, 256);
-					strncpy(win, start, MAX_WINDOW);
+					strncpy(win, start, WINDOW_SPAN);
 
 					if (is_in_frame(win)) {
 						if (windows.find(win) == windows.end()) {
@@ -413,6 +422,10 @@ int main(int argc, char** argv) {
 	int max_dist = atoi(argv[4]);
 	MIN_WINDOW = atoi(argv[5]);
 	MAX_WINDOW = atoi(argv[6]);
+	J_CONSERVED = argv[7][0];
+
+	fprintf(stderr, "V: %s\nJ: %s\ncontigs: %s\ndist: %d\nmin_win: %d\nmax_win: %d\nj_cons: %c\n",
+			v_file, j_file, contig_file, max_dist, MIN_WINDOW, MAX_WINDOW, J_CONSERVED);
 
 	find_candidates(v_file, j_file, contig_file, max_dist);
 }
