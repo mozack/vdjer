@@ -13,7 +13,6 @@
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
 #include <stdexcept>
-#include "abra_NativeAssembler.h"
 #include "seq_score.h"
 
 using namespace std;
@@ -1898,54 +1897,6 @@ char* assemble(const char* input,
 		return contig_str;
 	}
 }
-
-extern "C"
- JNIEXPORT jstring JNICALL Java_abra_NativeAssembler_assemble
-   (JNIEnv *env, jobject obj, jstring j_input, jstring j_output, jstring j_prefix,
-    jint j_truncate_on_output, jint j_max_contigs, jint j_max_paths_from_root,
-    jint j_read_length, jint j_kmer_size, jint j_min_node_freq, jint j_min_base_quality)
- {
-
-     //Get the native string from javaString
-     //const char *nativeString = env->GetStringUTFChars(javaString, 0);
-	const char* input  = env->GetStringUTFChars(j_input, 0);
-	const char* output = env->GetStringUTFChars(j_output, 0);
-	const char* prefix = env->GetStringUTFChars(j_prefix, 0);
-	int truncate_on_output = j_truncate_on_output;
-	int max_contigs = j_max_contigs;
-	int max_paths_from_root = j_max_paths_from_root;
-	int read_length = j_read_length;
-	int kmer_size = j_kmer_size;
-	min_node_freq = j_min_node_freq;
-	min_base_quality = j_min_base_quality;
-
-	fprintf(stderr, "Abra JNI entry point v0.79\n");
-
-	fprintf(stderr, "input len: %s : %d\n", prefix, strlen(input));
-	fprintf(stderr, "output: %s\n", output);
-	fprintf(stderr, "prefix: %s\n", prefix);
-	fprintf(stderr, "truncate_on_output: %d\n", truncate_on_output);
-	fprintf(stderr, "max_contigs: %d\n", max_contigs);
-	fprintf(stderr, "max_paths_from_root: %d\n", max_paths_from_root);
-	fprintf(stderr, "read_length: %d\n", read_length);
-	fprintf(stderr, "kmer_size: %d\n", kmer_size);
-	fprintf(stderr, "min node freq: %d\n", min_node_freq);
-	fprintf(stderr, "min base quality: %d\n", min_base_quality);
-
-	char* contig_str = assemble(input, NULL, output, prefix, truncate_on_output, max_contigs, max_paths_from_root, read_length, kmer_size, "bcr_fasta here");
-	jstring ret = env->NewStringUTF(contig_str);
-
-     //DON'T FORGET THIS LINE!!!
-    env->ReleaseStringUTFChars(j_input, input);
-    env->ReleaseStringUTFChars(j_output, output);
-    env->ReleaseStringUTFChars(j_prefix, prefix);
-    free(contig_str);
-
-    fflush(stdout);
-
-    return ret;
- }
-
 
 char* load_file(const char* filename) {
 	FILE    *infile;
