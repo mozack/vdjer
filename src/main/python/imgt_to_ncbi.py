@@ -51,7 +51,7 @@ for line in NCBI:
                 if not id == None and not id == '' and id in imgt_recs:
                     rec = imgt_recs[id]
                     
-                    print '\t'.join([id, get_chr(ncbi_fields[0]), ncbi_fields[3], ncbi_fields[4], rec[1], '.', ncbi_fields[6], rec[2], ncbi_fields[2]])
+                    print '\t'.join([get_chr(ncbi_fields[0]), ncbi_fields[3], ncbi_fields[4], rec[1], '.', ncbi_fields[6], rec[2], ncbi_fields[2], id])
 
 NCBI.close()
     
