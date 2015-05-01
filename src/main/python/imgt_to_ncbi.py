@@ -14,10 +14,13 @@ ncbi = sys.argv[2]
 #ncbi = '/home/lmose/dev/vdj/genes/28454.ncbi.test'
 
 def get_chr(input):
-    start = input.find('0')
-    stop = input.find('.')
-    chr = 'chr' + str(int(input[start:stop]))
-    return chr
+    if not input.startswith('NC'):
+        return None
+    else:
+        start = input.find('0')
+        stop = input.find('.')
+        chr = 'chr' + str(int(input[start:stop]))
+        return chr
 
 IMGT = open(imgt, 'r')
 
@@ -51,7 +54,10 @@ for line in NCBI:
                 if not id == None and not id == '' and id in imgt_recs:
                     rec = imgt_recs[id]
                     
-                    print '\t'.join([get_chr(ncbi_fields[0]), ncbi_fields[3], ncbi_fields[4], rec[1], '.', ncbi_fields[6], rec[2], ncbi_fields[2], id])
+                    chr = get_chr(ncbi_fields[0])
+                    
+                    if chr:
+                        print '\t'.join([chr, ncbi_fields[3], ncbi_fields[4], rec[1], '.', ncbi_fields[6], rec[2], ncbi_fields[2], id])
 
 NCBI.close()
     
