@@ -181,7 +181,7 @@ int find_frame(char* contig, int v, int window) {
 }
 
 void find_conserved_aminos(int v_index, int j_index, char* contig,
-		sparse_hash_set<const char*, my_hash, eqstr>& cdr3_seq, char* cdr3_block) {
+		sparse_hash_set<const char*, my_hash, eqstr>& cdr3_seq, char*& cdr3) {
 	// BCR heavy has conserved Cysteine in V and Tryptophan in J
 	// BCR light, TCR light & heavy have conserved Cysteine in V and Phenylalaline in J
 	// Cysteine : C :  TGT,TGC
@@ -214,11 +214,12 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 //			fprintf(stderr, "W @ %d\n", i);
 			j_indices.push_back(i);
 		} else if (J_CONSERVED == 'F' && (strncmp(contig+i, "TTC", 3) == 0 || strncmp(contig+i, "TTT", 3) == 0)) {
+//			fprintf(stderr, "J @ %d\n", i);
 			j_indices.push_back(i);
 		}
 	}
 
-	char* cdr3 = cdr3_block;
+//	char* cdr3 = cdr3_block;
 
 	vector<int>::const_iterator v;
 	for (v=v_indices.begin(); v!=v_indices.end(); v++) {
@@ -267,6 +268,7 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 
 	// Allocate space for up to 1,000,000 CDR3's
 	char* cdr3_block = (char*) calloc(256*1000000, sizeof(char));
+	char* orig_cdr3_block = cdr3_block;
 
 	sparse_hash_set<const char*, my_hash, eqstr> cdr3_seq;
 
@@ -302,8 +304,6 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 
 			int pad = SEQ_LEN*2 + ANCHOR_PADDING*2;
 
-//			fprintf(stderr, "v: %d, j: %d, window: %d\n", *v, *j, window);
-
 			if (window >= MIN_WINDOW && window <= MAX_WINDOW+pad && strlen(contig) > window) {
 				find_conserved_aminos(*v, *j, contig, cdr3_seq, cdr3_block);
 				// We've found a potential match
@@ -326,7 +326,6 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 			char* start = strstr(contig, *it);
 
 			if (start != NULL) {
-
 				int pad = WINDOW_SPAN - window;
 				int vpad = pad / 2;
 				if (vpad % 3 == 1) {
@@ -362,7 +361,7 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 		}
 	}
 
-	free(cdr3_block);
+	free(orig_cdr3_block);
 }
 
 void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist) {
