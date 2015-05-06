@@ -1947,7 +1947,8 @@ int main(int argc, char* argv[]) {
 	if (argc > 2) {
 		//unaligned_input_file = argv[2];
 		min_node_freq = atoi(argv[2]);
-		min_base_quality = min_node_freq * 30;
+		min_base_quality = atoi(argv[3]);
+//		min_base_quality = min_node_freq * 30;
 		if (min_base_quality >= MAX_QUAL_SUM) {
 			min_base_quality = MAX_QUAL_SUM-1;
 		}
