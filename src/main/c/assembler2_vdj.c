@@ -13,7 +13,7 @@
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
 #include <stdexcept>
-#include "abra_NativeAssembler.h"
+//#include "abra_NativeAssembler.h"
 #include "seq_score.h"
 
 using namespace std;
@@ -1867,6 +1867,7 @@ char* assemble(const char* input,
 	}
 }
 
+/*
 extern "C"
  JNIEXPORT jstring JNICALL Java_abra_NativeAssembler_assemble
    (JNIEnv *env, jobject obj, jstring j_input, jstring j_output, jstring j_prefix,
@@ -1913,6 +1914,7 @@ extern "C"
 
     return ret;
  }
+ */
 
 
 char* load_file(const char* filename) {
