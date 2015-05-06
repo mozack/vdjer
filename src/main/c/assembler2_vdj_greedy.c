@@ -1930,8 +1930,11 @@ int main(int argc, char* argv[]) {
 		SOURCE_NODE = argv[3];
 	}
 
-        min_node_freq = 3;
-        min_base_quality = 90;
+	min_node_freq = atoi(argv[4]);
+	min_base_quality = atoi(argv[5]);
+
+//	min_node_freq = 3;
+//	min_base_quality = 90;
 	min_contig_length = 130;
 
 //	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1.b.reads");
