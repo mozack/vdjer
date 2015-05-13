@@ -1954,8 +1954,7 @@ int main(int argc, char* argv[]) {
 		min_base_quality = MAX_QUAL_SUM-1;
 	}
 
-	int
- = atoi(argv[4]);
+	int read_len = atoi(argv[4]);
 
 	min_contig_length = 150;
 
