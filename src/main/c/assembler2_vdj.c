@@ -1946,15 +1946,15 @@ int main(int argc, char* argv[]) {
     min_node_freq = 5;
     min_base_quality = 150;
 
-	if (argc > 2) {
-		//unaligned_input_file = argv[2];
-		min_node_freq = atoi(argv[2]);
-		min_base_quality = atoi(argv[3]);
+	//unaligned_input_file = argv[2];
+	min_node_freq = atoi(argv[2]);
+	min_base_quality = atoi(argv[3]);
 //		min_base_quality = min_node_freq * 30;
-		if (min_base_quality >= MAX_QUAL_SUM) {
-			min_base_quality = MAX_QUAL_SUM-1;
-		}
+	if (min_base_quality >= MAX_QUAL_SUM) {
+		min_base_quality = MAX_QUAL_SUM-1;
 	}
+
+	int read_len = atoi(argv[4]);
 
 	min_contig_length = 150;
 
@@ -1993,7 +1993,7 @@ int main(int argc, char* argv[]) {
                 false,
                 5000000,
                 50000000,
-                50,
+                read_length,
                 25,
                 bcr_fasta);
 

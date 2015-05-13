@@ -1933,6 +1933,8 @@ int main(int argc, char* argv[]) {
 	min_node_freq = atoi(argv[4]);
 	min_base_quality = atoi(argv[5]);
 
+	int read_length = atoi(argv[6]);
+
 //	min_node_freq = 3;
 //	min_base_quality = 90;
 	min_contig_length = 130;
@@ -1972,7 +1974,7 @@ int main(int argc, char* argv[]) {
                 false,
                 5000000,
                 50000000,
-                50,
+                read_length,
                 25,
                 bcr_fasta);
 
