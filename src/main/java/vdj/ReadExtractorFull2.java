@@ -17,11 +17,10 @@ import java.io.IOException;
 public class ReadExtractorFull2 {
 	
 	private ReverseComplementor rc = new ReverseComplementor();
-	
-	private static int READ_LENGTH = 50;
+	private int maxReadLength;
 
-	public void run(String inFile1, String outFile) throws IOException {
-		
+	public void run(String inFile1, String outFile, int maxReadLength) throws IOException {
+		this.maxReadLength = maxReadLength;
 		BufferedWriter output = new BufferedWriter(new FileWriter(outFile, false));
 
 		extract(inFile1, output);
@@ -35,12 +34,12 @@ public class ReadExtractorFull2 {
 		for (SAMRecord read : reader) {
 			String bases = read.getReadString();
 			
-			while (bases.length() < READ_LENGTH) {
+			while (bases.length() < maxReadLength) {
 				bases += 'N';
 			}
 			
 			String quals = read.getBaseQualityString();
-			while (quals.length() < READ_LENGTH) {
+			while (quals.length() < maxReadLength) {
 				quals += '#';
 			}
 			
@@ -70,7 +69,8 @@ public class ReadExtractorFull2 {
 	public static void main(String[] args) throws IOException {
 		String in1 = args[0];
 		String out = args[1];
+		int maxReadLength = Integer.parseInt(args[2]);
 	
-		new ReadExtractorFull2().run(in1, out);
+		new ReadExtractorFull2().run(in1, out, maxReadLength);
 	}
 }
