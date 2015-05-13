@@ -2,6 +2,9 @@ import sys
 import subprocess
 
 KMER=25
+MNF = sys.argv[1]
+MBQ = sys.argv[2]
+READ_LENGTH = sys.argv[3]
 
 #VDJG='/datastore/nextgenout4/seqware-analysis/lmose/vdj/mouse/abra/vdjg'
 VDJG='/datastore/nextgenout4/seqware-analysis/lmose/vdj/mouse/samples/vdjg.bash'
@@ -61,6 +64,7 @@ def rc(bases):
     
     return new_bases
 
+
 # There should be 1 line in format <score>    <window(aminos)>    <window(nucleotides)>    <window(nucleotides)>    ...
 for line in sys.stdin:
     line = line.rstrip()
@@ -80,7 +84,8 @@ for line in sys.stdin:
         
         # Invoke assembler script passing in start kmer and capture stdout
         # Extends 5' side of window
-        vdj = subprocess.check_output([VDJG, start_kmer])
+#        print 'start: ' + start_kmer
+        vdj = subprocess.check_output([VDJG, start_kmer, MNF, MBQ, READ_LENGTH])
         vdj = vdj.rstrip()
         
         # Get 4th column from vdj
@@ -91,7 +96,8 @@ for line in sys.stdin:
             
         # Invoke assembler script passing in end kmer and capture stdout
         # Extends 3' side of window
-        vdj = subprocess.check_output([VDJG, end_kmer])
+#        print 'end: ' + end_kmer
+        vdj = subprocess.check_output([VDJG, end_kmer, MNF, MBQ, READ_LENGTH])
         vdj = vdj.rstrip()
         
         vdj_fields = vdj.split('\t')
@@ -105,5 +111,3 @@ for line in sys.stdin:
             rna = start + window + stop
             amino_acids = convert_to_aa(rna)
             print amino_acids + '\t' + rna
-            
-
