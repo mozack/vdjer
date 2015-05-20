@@ -2,13 +2,20 @@ package vdj.likelihood;
 
 import java.util.Arrays;
 
+import vdj.ReverseComplementor;
+
 import htsjdk.samtools.SAMRecord;
 
 public class ReadLikelihood {
 	
+	private static double PROB_MATRIX_INIT = Double.MAX_VALUE;
+	private static double LOG10_PROB_MATRIX_INIT = Math.log10(PROB_MATRIX_INIT); 
+	
 	private static double[] phredProb = initPhredProb();
 	
 	private static final int MAX_BASE_QUAL = 254;
+	
+	private ReverseComplementor rc = new ReverseComplementor();
 	
 	private static synchronized double[] initPhredProb() {
 		double[] phredProb = new double[MAX_BASE_QUAL+1];
@@ -17,6 +24,13 @@ public class ReadLikelihood {
 		}
 		
 		return phredProb;
+	}
+	
+	public double calcReadLikelihood(SAMRecord read, String contig) {
+		double score1 = score(read.getReadString(), read.getBaseQualities(), contig);
+		double score2 = score(rc.reverseComplement(read.getReadString()), rc.reverse(read.getBaseQualities()), contig);
+		
+		return Math.max(score1, score2);
 	}
 	
 	public double score(SAMRecord read, String contig) {
@@ -30,13 +44,13 @@ public class ReadLikelihood {
 		double[][] probMatrix = new double[readBases.length()+1][contig.length()+1];
 		
 		
-		//TODO: Work in log space instead?
+		// Init matrices to large values to avoid numeric underflow
 		for (int c=0; c<=contig.length(); c++) {
-			probMatrix[0][c] = 1.0;
+			probMatrix[0][c] = PROB_MATRIX_INIT;
 		}
 		
 		for (int r=0; r<=readBases.length(); r++) {
-			probMatrix[r][0] = 1.0;
+			probMatrix[r][0] = PROB_MATRIX_INIT;
 		}
 		
 		for (int r=0; r<readBases.length(); r++) {
@@ -82,7 +96,8 @@ public class ReadLikelihood {
 		
 //		dumpMatrices(swMatrix, probMatrix);
 		
-		return bestProb;
+		// Return log scaled prob adjusted by the initial matrix value.
+		return Math.log10(bestProb) - LOG10_PROB_MATRIX_INIT;
 	}
 	
 	private void dumpMatrices(int[][] sw, double[][] prob) {
@@ -182,6 +197,9 @@ public class ReadLikelihood {
 		read = "AGGG";
 		readQuals = new byte[] { 40,30,20,10 };
 		p = l.score(read,  readQuals, contig);
+		
 		System.out.println("p6: " + p);
+		
+		System.out.println("log(p6): " + Math.log10(p));
 	}
 }
