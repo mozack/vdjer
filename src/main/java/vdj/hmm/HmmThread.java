@@ -7,10 +7,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import vdj.likelihood.ReadLikelihood;
+
 
 public class HmmThread implements Runnable {
 	
-	private ReadLikelihoodCalc calc = new ReadLikelihoodCalc(ContigSelector.READ_LENGTH);
+//	private ReadLikelihoodCalc calc = new ReadLikelihoodCalc(ContigSelector.READ_LENGTH);
+	private ReadLikelihood calc = new ReadLikelihood();
 	
 	private String line;
 	private List<SAMRecord> reads;
@@ -19,7 +22,7 @@ public class HmmThread implements Runnable {
 	
 	public HmmThread(int readLength, List<SAMRecord> reads, 
 			String line, BufferedWriter writer, List<HmmThread> threads) {
-		calc = new ReadLikelihoodCalc(readLength);
+		calc = new ReadLikelihood();
 		this.reads = reads;
 		this.writer = writer;
 		this.threads = threads;
@@ -42,7 +45,7 @@ public class HmmThread implements Runnable {
 		}
 		
 		//double score = calc.getHaplotypeScore2(haplotype, reads);
-		double score = calc.getGroupedHaplotypesScore(haplotypes, reads);
+		double score = calc.getGroupedContigScore(haplotypes, reads);
 //		double score = calc.getHaplotypeScore(haplotype, reads);
 		synchronized(writer) {
 			try {

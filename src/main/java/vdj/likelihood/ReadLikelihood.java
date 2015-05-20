@@ -1,6 +1,7 @@
 package vdj.likelihood;
 
 import java.util.Arrays;
+import java.util.List;
 
 import vdj.ReverseComplementor;
 
@@ -8,6 +9,7 @@ import htsjdk.samtools.SAMRecord;
 
 public class ReadLikelihood {
 	
+	public static final double READ_LIKELIHOOD_FLOOR = -100;
 	private static double PROB_MATRIX_INIT = Double.MAX_VALUE;
 	private static double LOG10_PROB_MATRIX_INIT = Math.log10(PROB_MATRIX_INIT); 
 	
@@ -31,6 +33,22 @@ public class ReadLikelihood {
 		double score2 = score(rc.reverseComplement(read.getReadString()), rc.reverse(read.getBaseQualities()), contig);
 		
 		return Math.max(score1, score2);
+	}
+	
+	public double getGroupedContigScore(List<String> contigs, List<SAMRecord> reads) {
+		double score = 0;
+		
+		for (SAMRecord read : reads) {
+			double maxReadLikelihood = READ_LIKELIHOOD_FLOOR;
+			for (String contig : contigs) {
+				double readLikelihood = calcReadLikelihood(read, contig);
+				maxReadLikelihood = Math.max(readLikelihood, maxReadLikelihood);
+			}
+			
+			score += maxReadLikelihood;
+		}
+		
+		return score;
 	}
 	
 	public double score(SAMRecord read, String contig) {
