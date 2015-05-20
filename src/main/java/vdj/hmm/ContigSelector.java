@@ -137,6 +137,12 @@ public class ContigSelector {
 		String output = args[2];
 		MAX_THREADS = Integer.parseInt(args[3]);
 		
+
+//		String readsBam = "/home/lmose/dev/vdj/hmm/cdr3.reads.bam";
+//		String input = "/home/lmose/dev/vdj/hmm/cdr3.txt";
+//		String output = "/home/lmose/dev/vdj/hmm/cdr3.txt.scores";
+//		MAX_THREADS = 8;
+
 		
 /*
 		String readsBam = "/home/lmose/dev/vdj/scoring/human/cdr3.reads.bam";
