@@ -423,7 +423,7 @@ int main(int argc, char** argv) {
 	MIN_WINDOW = atoi(argv[5]);
 	MAX_WINDOW = atoi(argv[6]);
 	J_CONSERVED = argv[7][0];
-	WINDOW_SPAN = atoi(argv[8])
+	WINDOW_SPAN = atoi(argv[8]);
 
 	fprintf(stderr, "V: %s\nJ: %s\ncontigs: %s\ndist: %d\nmin_win: %d\nmax_win: %d\nj_cons: %c\nwindow_span: %d\n",
 			v_file, j_file, contig_file, max_dist, MIN_WINDOW, MAX_WINDOW, J_CONSERVED, WINDOW_SPAN);
