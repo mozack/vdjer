@@ -269,7 +269,7 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 
 	// Allocate space for up to 10,000,000 CDR3's
 	// TODO: Allocate space as needed, not all up front
-	char* cdr3_block = (char*) calloc(1024*10000000, sizeof(char));
+	char* cdr3_block = (char*) calloc(1024L*10000000L, sizeof(char));
 	char* orig_cdr3_block = cdr3_block;
 
 	sparse_hash_set<const char*, my_hash, eqstr> cdr3_seq;
