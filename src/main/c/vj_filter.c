@@ -234,7 +234,7 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 
 				strncpy(cdr3, contig+*v, window);
 				cdr3_seq.insert(cdr3);
-				cdr3 += 256;
+				cdr3 += 1024;
 /*
 
 				int pad = MAX_WINDOW - window;
@@ -267,8 +267,9 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, my_hash, eqstr>
 
 void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& windows) {
 
-	// Allocate space for up to 1,000,000 CDR3's
-	char* cdr3_block = (char*) calloc(256*1000000, sizeof(char));
+	// Allocate space for up to 10,000,000 CDR3's
+	// TODO: Allocate space as needed, not all up front
+	char* cdr3_block = (char*) calloc(1024*10000000, sizeof(char));
 	char* orig_cdr3_block = cdr3_block;
 
 	sparse_hash_set<const char*, my_hash, eqstr> cdr3_seq;
@@ -344,14 +345,14 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 				*/
 
 				if (strlen(start) > WINDOW_SPAN) {
-					char win[256];
-					memset(win, 0, 256);
+					char win[1024];
+					memset(win, 0, 1024);
 					strncpy(win, start, WINDOW_SPAN);
 
 					if (is_in_frame(win)) {
 						if (windows.find(win) == windows.end()) {
 
-							char* final_win = (char*) calloc(256, sizeof(char));
+							char* final_win = (char*) calloc(1024, sizeof(char));
 							strcpy(final_win, win);
 
 							windows.insert(final_win);
