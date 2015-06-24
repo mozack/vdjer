@@ -18,7 +18,7 @@ using google::sparse_hash_set;
 
 int MIN_WINDOW;
 int MAX_WINDOW;
-int WINDOW_SPAN
+int WINDOW_SPAN;
 char J_CONSERVED;
 
 #define FRAME_PADDING 100
