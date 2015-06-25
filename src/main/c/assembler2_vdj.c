@@ -55,9 +55,9 @@ using google::sparse_hash_set;
 #define MIN_BASE_QUALITY 13
 
 // Minimum edge frequency as percent
- #define MIN_EDGE_FREQUENCY .02
+// #define MIN_EDGE_FREQUENCY .02
 
-//#define MIN_EDGE_FREQUENCY -1
+#define MIN_EDGE_FREQUENCY -1
 
 // TODO: This should vary be kmer len
 #define MIN_ROOT_HOMOLOGY_SCORE 16
