@@ -1653,6 +1653,42 @@ void cleanup(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, 
 	free(pool);
 }
 
+void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
+
+	FILE* fp = fopen(filename, "w");
+
+	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+				 it != nodes->end(); ++it) {
+
+		const char* key = it->first;
+		node* curr_node = it->second;
+
+		char output[1024];
+		memset(output, 0, 1024);
+		strncpy(output, curr_node->kmer, kmer_size);
+		int idx = kmer_size;
+		strncpy(&(output[idx]), "->", 2);
+		idx += 2;
+
+		if (curr_node != NULL) {
+			////////////////////////////////////////////////
+			// Check to node list for low frequency edges
+			struct linked_node* to_node = curr_node->toNodes;
+
+			while (to_node != NULL) {
+				strncpy(&(output[idx]), to_node->node->kmer, kmer_size);
+				idx += kmer_size;
+				output[idx] = ',';
+				idx += 1;
+				to_node = to_node->next;
+			}
+		}
+
+		fprintf(fp, "%s\n", output);
+	}
+
+	fclose(fp);
+}
 
 
 char* assemble(const char* input,
@@ -1728,6 +1764,8 @@ char* assemble(const char* input,
 	prune_graph(nodes, isUnalignedRegion);
 	printf("Prune graph 2 Done...\n");
 	fflush(stdout);
+
+	dump_graph(nodes, "graph.txt");
 
 
 	// The initial set of root nodes are used as markers (or breadcrumbs)
