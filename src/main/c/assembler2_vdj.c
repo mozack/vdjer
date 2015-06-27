@@ -1804,10 +1804,13 @@ char* assemble(const char* input,
 			usleep(10*1000);
 		}
 
+//		int ROOT_NODES_PER_THREADS = 10;
+		int ROOT_NODES_PER_THREADS = 2;
+
 		int root_count = 1;
 		linked_node* next_root_start = root_nodes;
 		linked_node* last = root_nodes;
-		while (root_nodes != NULL && root_count < 10) {
+		while (root_nodes != NULL && root_count < ROOT_NODES_PER_THREADS) {
 			root_nodes = root_nodes->next;
 			if (root_nodes != NULL) {
 				last = root_nodes;
