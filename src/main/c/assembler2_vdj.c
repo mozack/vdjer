@@ -41,7 +41,7 @@ using google::sparse_hash_set;
 #define MAX_FREQUENCY 32766
 #define MAX_QUAL_SUM 255
 
-#define MIN_CONTIG_SCORE -10
+#define MIN_CONTIG_SCORE -6
 
 //#define MIN_HOMOLOGY_SCORE 13
 
