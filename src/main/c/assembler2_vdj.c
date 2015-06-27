@@ -41,7 +41,7 @@ using google::sparse_hash_set;
 #define MAX_FREQUENCY 32766
 #define MAX_QUAL_SUM 255
 
-#define MIN_CONTIG_SCORE -100
+#define MIN_CONTIG_SCORE -10
 
 //#define MIN_HOMOLOGY_SCORE 13
 
@@ -66,7 +66,7 @@ using google::sparse_hash_set;
 #define MAX_THREADS 100000
 
 // TODO: Parameterize
-#define MAX_RUNNING_THREADS 8
+#define MAX_RUNNING_THREADS 32
 
 pthread_mutex_t running_thread_mutex;
 pthread_mutex_t contig_writer_mutex;
@@ -1057,6 +1057,7 @@ struct contig* new_contig() {
 
 struct contig* copy_contig(struct contig* orig) {
 	struct contig* copy = (contig*) malloc(sizeof(contig));
+	//TODO: Remove one of these
 	memcpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
 	strncpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
 	copy->size = orig->size;
@@ -1320,8 +1321,8 @@ void* worker_thread(void* t) {
 
 		int contig_count;
 		const char* prefix = "foo";
-		int max_paths_from_root = 50000000;
-		int max_contigs = 5000000;
+		int max_paths_from_root = 500000000;
+		int max_contigs = 50000000;
 		char stop_on_repeat = false;
 		char shadow_mode = false;
 		char* contig_str = NULL;
@@ -2029,8 +2030,8 @@ int main(int argc, char* argv[]) {
 		"",
                 "foo",
                 false,
-                5000000,
                 50000000,
+                500000000,
                 read_len,
                 25,
                 bcr_fasta);
