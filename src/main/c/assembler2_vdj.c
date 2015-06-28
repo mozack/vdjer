@@ -41,8 +41,6 @@ using google::sparse_hash_set;
 #define MAX_FREQUENCY 32766
 #define MAX_QUAL_SUM 255
 
-#define MIN_CONTIG_SCORE -6
-
 //#define MIN_HOMOLOGY_SCORE 13
 
 // TODO: This is used to bound qual sum arrays.  Use a memory pool instead for this.
@@ -93,6 +91,8 @@ int kmer_size;
 int min_node_freq;
 int min_base_quality;
 
+//#define MIN_CONTIG_SCORE -6
+int MIN_CONTIG_SCORE;
 
 
 #define BIG_CONSTANT(x) (x##LLU)
@@ -1997,6 +1997,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	int read_len = atoi(argv[4]);
+
+	MIN_CONTIG_SCORE = atoi(argv[5]);
 
 	min_contig_length = 150;
 
