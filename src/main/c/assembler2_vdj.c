@@ -64,7 +64,7 @@ using google::sparse_hash_set;
 #define MAX_THREADS 100000
 
 // TODO: Parameterize
-#define MAX_RUNNING_THREADS 8
+int MAX_RUNNING_THREADS 8
 
 pthread_mutex_t running_thread_mutex;
 pthread_mutex_t contig_writer_mutex;
@@ -92,7 +92,7 @@ int min_node_freq;
 int min_base_quality;
 
 //#define MIN_CONTIG_SCORE -6
-int MIN_CONTIG_SCORE;
+float MIN_CONTIG_SCORE;
 
 
 #define BIG_CONSTANT(x) (x##LLU)
@@ -1998,7 +1998,9 @@ int main(int argc, char* argv[]) {
 
 	int read_len = atoi(argv[4]);
 
-	MIN_CONTIG_SCORE = atoi(argv[5]);
+	MIN_CONTIG_SCORE = atof(argv[5]);
+
+	MAX_RUNNING_THREADS = atoi(argv[6]);
 
 	min_contig_length = 150;
 
