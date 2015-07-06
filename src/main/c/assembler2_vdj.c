@@ -64,7 +64,7 @@ using google::sparse_hash_set;
 #define MAX_THREADS 100000
 
 // TODO: Parameterize
-int MAX_RUNNING_THREADS 8
+int MAX_RUNNING_THREADS 8;
 
 pthread_mutex_t running_thread_mutex;
 pthread_mutex_t contig_writer_mutex;
