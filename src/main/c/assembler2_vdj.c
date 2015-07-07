@@ -25,7 +25,7 @@ using google::sparse_hash_set;
 //#define MIN_CONTIG_LENGTH 101
 //#define MIN_NODE_FREQUENCY 3
 //#define MIN_NODE_FREQUENCY 2
-#define MAX_CONTIG_SIZE 100000
+#define MAX_CONTIG_SIZE 10000
 #define MAX_READ_LENGTH 1001
 //#define MIN_BASE_QUALITY 20
 #define INCREASE_MIN_NODE_FREQ_THRESHOLD 2500
@@ -163,9 +163,9 @@ struct struct_pool {
 	struct read_pool* read_pool;
 };
 
-#define NODES_PER_BLOCK 100000000
+#define NODES_PER_BLOCK 1000000
 #define MAX_NODE_BLOCKS 50000
-#define READS_PER_BLOCK 10000000
+#define READS_PER_BLOCK 1000000
 #define MAX_READ_BLOCKS 100000
 
 struct node_pool {
@@ -1071,6 +1071,7 @@ struct contig* copy_contig(struct contig* orig, vector<char*> all_contig_fragmen
 		// track fragments for cleanup later
 		all_contig_fragments.push_back(orig->seq);
 
+		//TODO: Use smaller fragment block here.
 		orig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
 		orig->size = 0;  // Reset index (not really size)
 	}
@@ -2051,7 +2052,7 @@ int main(int argc, char* argv[]) {
 
 	MAX_RUNNING_THREADS = atoi(argv[6]);
 
-	min_contig_length = 150;
+	min_contig_length = 501;
 
 //	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1.b.reads");
 //	char* unaligned_input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1_unaligned.c.reads");
