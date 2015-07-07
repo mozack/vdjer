@@ -764,6 +764,9 @@ int is_root(struct node* node, int& num_root_candidates) {
 			}
 */
 			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node)) {
+//			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node) &&
+//					(strncmp(node->kmer, "CGCACCATCTCCAAGGACACCTCCA", kmer_size) == 0) ) {
+
 				is_root = 1;
 				node->is_root = 1;
 
@@ -1045,9 +1048,9 @@ struct contig {
 
 struct contig* new_contig() {
 	struct contig* curr_contig;
-	curr_contig = (contig*) malloc(sizeof(contig));
+	curr_contig = (contig*) calloc(sizeof(contig), sizeof(char));
 //	printf("seq size: %d\n", sizeof(curr_contig->seq));
-	memset(curr_contig->seq, 0, sizeof(curr_contig->seq));
+//	memset(curr_contig->seq, 0, sizeof(curr_contig->seq));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
@@ -1056,9 +1059,7 @@ struct contig* new_contig() {
 }
 
 struct contig* copy_contig(struct contig* orig) {
-	struct contig* copy = (contig*) malloc(sizeof(contig));
-	//TODO: Remove one of these
-	memcpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
+	struct contig* copy = (contig*) calloc(sizeof(contig), sizeof(char));
 	strncpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
 	copy->size = orig->size;
 	copy->is_repeat = orig->is_repeat;
@@ -1804,8 +1805,8 @@ char* assemble(const char* input,
 			usleep(10*1000);
 		}
 
-//		int ROOT_NODES_PER_THREADS = 10;
-		int ROOT_NODES_PER_THREADS = 2;
+		int ROOT_NODES_PER_THREADS = 10;
+//		int ROOT_NODES_PER_THREADS = 2;
 
 		int root_count = 1;
 		linked_node* next_root_start = root_nodes;
