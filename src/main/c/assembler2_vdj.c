@@ -25,7 +25,7 @@ using google::sparse_hash_set;
 //#define MIN_CONTIG_LENGTH 101
 //#define MIN_NODE_FREQUENCY 3
 //#define MIN_NODE_FREQUENCY 2
-#define MAX_CONTIG_SIZE 5000000
+#define MAX_CONTIG_SIZE 100000
 #define MAX_READ_LENGTH 1001
 //#define MIN_BASE_QUALITY 20
 #define INCREASE_MIN_NODE_FREQ_THRESHOLD 2500
@@ -1038,45 +1038,79 @@ struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
 
 //TODO: Order these...
 struct contig {
-	char seq[MAX_CONTIG_SIZE];
-	int size;
-	char is_repeat;
+	char* seq;
+	vector<char*>* fragments;
 	struct node* curr_node;
 	sparse_hash_set<const char*, my_hash, eqstr>* visited_nodes;
 	double score;
+	int size;  // really curr_index now
+	char is_repeat;
 };
 
 struct contig* new_contig() {
 	struct contig* curr_contig;
-	curr_contig = (contig*) calloc(sizeof(contig), sizeof(char));
+	curr_contig = (contig*) calloc(1, sizeof(contig));
 //	printf("seq size: %d\n", sizeof(curr_contig->seq));
 //	memset(curr_contig->seq, 0, sizeof(curr_contig->seq));
+	curr_contig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
 	curr_contig->score = 0;
+	curr_contig->fragments = new vector<char*>();
+
 	return curr_contig;
 }
 
-struct contig* copy_contig(struct contig* orig) {
+struct contig* copy_contig(struct contig* orig, vector<char*> all_contig_fragments) {
+
+	// Stash any orig sequence in fragment vector so the pointer can be shared across contigs
+	if (strlen(orig->seq) > 0) {
+		orig->fragments->push_back(orig->seq);
+
+		// track fragments for cleanup later
+		all_contig_fragments.push_back(orig->seq);
+
+		orig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
+		orig->size = 0;  // Reset index (not really size)
+	}
+
 	struct contig* copy = (contig*) calloc(sizeof(contig), sizeof(char));
-	strncpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
+	copy->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
+//	strncpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
+
+	// Copy original fragments to new contig
+	copy->fragments = new vector<char*>(*(orig->fragments));
+
 	copy->size = orig->size;
 	copy->is_repeat = orig->is_repeat;
 	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
 	copy->score = orig->score;
+
 	return copy;
+
 }
 
 void free_contig(struct contig* contig) {
 	delete contig->visited_nodes;
-	memset(contig, 0, sizeof(contig));
+	delete contig->fragments; // TODO: Indiviual fragments need to be freed!
+	free(contig->seq);
 	free(contig);
 }
 
 char is_node_visited(struct contig* contig, struct node* node) {
 	 sparse_hash_set<const char*, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
 	 return it != contig->visited_nodes->end();
+}
+
+int get_contig_len(struct contig* contig) {
+	int length = strlen(contig->seq);
+
+	for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
+		length += strlen(*it);
+	}
+
+	return length;
 }
 
 int output_contigs = 0;
@@ -1091,26 +1125,34 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 	output_contigs += 1;
 	pthread_mutex_unlock(&contig_writer_mutex);
 
-	if (strlen(contig->seq) >= min_contig_length) {
+//	if (strlen(contig->seq) >= min_contig_length) {
+	if (get_contig_len(contig) >= min_contig_length) {
 		contig_count++;
+
+
 		if (contig->is_repeat) {
 			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score/(double)strlen(buf));
-//			strcat(contigs, buf);
-//			strcat(contigs, contig->seq);
-//			strcat(contigs, "\n");
 		} else {
 			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score/(double)strlen(buf));
-//			strcat(contigs, buf);
-//			strcat(contigs, contig->seq);
-//			strcat(contigs, "\n");
 		}
+
 		pthread_mutex_lock(&contig_writer_mutex);
-		fprintf(stderr, "%s%s\n", buf, contig->seq);
+//		fprintf(stderr, "%s%s\n", buf, contig->seq);
+		fprintf(stderr, "%s", buf);
+		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
+			fprintf(stderr, "%s", *it);
+		}
+		if (strlen(contig->seq) > 0) {
+			fprintf(stderr, "%s", contig->seq);
+		}
+		fprintf(stderr, "\n");
 		pthread_mutex_unlock(&contig_writer_mutex);
 
 //		fflush(stderr);
 	}
 }
+
+
 
 
 //#define OK 0
@@ -1137,6 +1179,7 @@ int build_contigs(
 	struct contig* root_contig = new_contig();
 	root_contig->curr_node = root;
 	contigs.push(root_contig);
+	vector<char*> all_contig_fragments;
 
 	int paths_from_root = 1;
 
@@ -1256,7 +1299,7 @@ int build_contigs(
 			to_linked_node = to_linked_node->next;
 
 			while (to_linked_node != NULL) {
-				struct contig* contig_branch = copy_contig(contig);
+				struct contig* contig_branch = copy_contig(contig, all_contig_fragments);
 				contig_branch->curr_node = to_linked_node->node;
 				contig_branch->score = contig_branch->score + log10(contig_branch->curr_node->frequency) - log10_total_edge_count;
 				contigs.push(contig_branch);
@@ -1306,6 +1349,11 @@ int build_contigs(
 		struct contig* contig = popped_contigs.top();
 		popped_contigs.pop();
 		free_contig(contig);
+	}
+
+	// Cleanup contig fragments
+	for (vector<char*>::iterator it = all_contig_fragments.begin(); it != all_contig_fragments.end(); ++it) {
+		free(*it);
 	}
 
 	return status;
