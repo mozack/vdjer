@@ -261,7 +261,11 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 }
 
 void process_contig(char* contig_id, char* contig) {
-	vector<map_info*> read1;
+
+	int read1_count = 0;
+	int MAX_READ_PAIRS = 1000000;
+	map_info** read1 = (map_info**) calloc(MAX_READ_PAIRS, sizeof(map_info*));
+
 	sparse_hash_map<const char*, struct map_info*, my_hash2, eqstr2> read2;
 
 	// Load read 1 matches into vector
@@ -278,7 +282,7 @@ void process_contig(char* contig_id, char* contig) {
 
 				if (r_info->read_num == 1) {
 //					printf("Adding R1: %s\n", r_info->id);
-					read1.push_back(m_info);
+					read1[read1_count++] = m_info;
 				} else {
 //					printf("Adding R2: %s\n", r_info->id);
 					// TODO: Handle read 2 multi-mappers
@@ -288,14 +292,13 @@ void process_contig(char* contig_id, char* contig) {
 		}
 	}
 
-	// Go through read 1 vector looking for matches in read 2 map
-	for (vector<map_info*>::iterator it = read1.begin(); it != read1.end(); ++it) {
-		map_info* r1 = *it;
+	// Go through read 1 array looking for matches in read 2 map
+	for (int i=0; i<read1_count; i++) {
+
+		map_info* r1 = read1[i];
 		map_info* r2 = read2[r1->info->id];
 
-//		printf("--R1: %s\n", r1->info->id);
 		if (r2 != NULL) {
-//			printf("Found: %s\n", r1->info->id);
 
 			if (r1->info->is_rc != r2->info->is_rc) {
 				int insert = abs(r1->pos - r2->pos) + read_len;
@@ -305,6 +308,20 @@ void process_contig(char* contig_id, char* contig) {
 				}
 			}
 		}
+	}
+
+	// Clean up memory
+	for (int i=0; i<read1_count; i++) {
+		free(read1[i]);
+	}
+
+	free(read1);
+
+	for (sparse_hash_map<const char*, struct map_info*, my_hash2, eqstr2>::const_iterator it = read2.begin();
+			it != read2.end(); ++it) {
+
+		map_info* m_info = it->second;
+		free(m_info);
 	}
 }
 
