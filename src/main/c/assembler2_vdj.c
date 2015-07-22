@@ -1062,14 +1062,14 @@ struct contig* new_contig() {
 	return curr_contig;
 }
 
-struct contig* copy_contig(struct contig* orig, vector<char*> all_contig_fragments) {
+struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_contig_fragments) {
 
 	// Stash any orig sequence in fragment vector so the pointer can be shared across contigs
 	if (strlen(orig->seq) > 0) {
 		orig->fragments->push_back(orig->seq);
 
 		// track fragments for cleanup later
-		all_contig_fragments.push_back(orig->seq);
+		all_contig_fragments[num_fragments++] = orig->seq;
 
 		//TODO: Use smaller fragment block here.
 		orig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
@@ -1078,7 +1078,6 @@ struct contig* copy_contig(struct contig* orig, vector<char*> all_contig_fragmen
 
 	struct contig* copy = (contig*) calloc(sizeof(contig), sizeof(char));
 	copy->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
-//	strncpy(copy->seq, orig->seq, MAX_CONTIG_SIZE);
 
 	// Copy original fragments to new contig
 	copy->fragments = new vector<char*>(*(orig->fragments));
@@ -1180,7 +1179,11 @@ int build_contigs(
 	struct contig* root_contig = new_contig();
 	root_contig->curr_node = root;
 	contigs.push(root_contig);
-	vector<char*> all_contig_fragments;
+//	vector<char*> all_contig_fragments;
+
+	int MAX_FRAGMENTS_PER_THREAD = 10000000;
+	int num_fragments = 0;
+	char** all_contig_fragments = (char**) calloc(MAX_FRAGMENTS_PER_THREAD, sizeof(char*));
 
 	int paths_from_root = 1;
 
@@ -1300,7 +1303,7 @@ int build_contigs(
 			to_linked_node = to_linked_node->next;
 
 			while (to_linked_node != NULL) {
-				struct contig* contig_branch = copy_contig(contig, all_contig_fragments);
+				struct contig* contig_branch = copy_contig(contig, num_fragments, all_contig_fragments);
 				contig_branch->curr_node = to_linked_node->node;
 				contig_branch->score = contig_branch->score + log10(contig_branch->curr_node->frequency) - log10_total_edge_count;
 				contigs.push(contig_branch);
@@ -1352,10 +1355,17 @@ int build_contigs(
 		free_contig(contig);
 	}
 
-	// Cleanup contig fragments
-	for (vector<char*>::iterator it = all_contig_fragments.begin(); it != all_contig_fragments.end(); ++it) {
-		free(*it);
+	printf("Freeing %d fragments\n", num_fragments);
+	for (int i=0; i<num_fragments; i++) {
+		free(all_contig_fragments[i]);
 	}
+
+	free(all_contig_fragments);
+
+	// Cleanup contig fragments
+//	for (vector<char*>::iterator it = all_contig_fragments.begin(); it != all_contig_fragments.end(); ++it) {
+//		free(*it);
+//	}
 
 	return status;
 }
