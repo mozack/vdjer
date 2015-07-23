@@ -54,17 +54,19 @@ uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
   return h;
 }
 
-// read length.  TODO: Parameterize
-int read_len = 50;
+//int READ_LEN = 50;
+//int MIN_INSERT = 180 - 60; // 120
+//int MAX_INSERT = 180 + 60; // 240
 
-int min_insert = 180 - 60; // 120
-int max_insert = 180 + 60; // 240
+int READ_LEN;
+int MIN_INSERT;
+int MAX_INSERT;
 
 struct eqstr
 {
   bool operator()(const char* s1, const char* s2) const
   {
-    return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, read_len) == 0);
+    return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, READ_LEN) == 0);
   }
 };
 
@@ -72,7 +74,7 @@ struct my_hash
 {
 	uint64_t operator()(const char* seq) const
 	{
-		return MurmurHash64A(seq, read_len, 97);
+		return MurmurHash64A(seq, READ_LEN, 97);
 	}
 };
 
@@ -260,8 +262,8 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	int flag1 = 0x1l | 0x2 |  (r1->info->is_rc ? 0x10 : 0x20) | 0x40;
 	int flag2 = 0x1l | 0x2 |  (r2->info->is_rc ? 0x10 : 0x20) | 0x80;
 	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t*\n";
-	printf(format, read_id, flag1, contig_id, r1->pos, read_len, r2->pos, insert, r1->info->seq);
-	printf(format, read_id, flag2, contig_id, r2->pos, read_len, r1->pos, insert, r2->info->seq);
+	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, r1->info->seq);
+	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, r2->info->seq);
 }
 
 void process_contig(char* contig_id, char* contig) {
@@ -274,7 +276,7 @@ void process_contig(char* contig_id, char* contig) {
 
 	// Load read 1 matches into vector
 	// Load read 2 matches into map
-	for (int i=0; i<strlen(contig)-read_len; i++) {
+	for (int i=0; i<strlen(contig)-READ_LEN; i++) {
 		read_vec* read_v = (*reads)[contig+i];
 		if (read_v != NULL) {
 			for (vector<read_info*>::iterator it = read_v->reads->begin(); it != read_v->reads->end(); ++it) {
@@ -305,8 +307,8 @@ void process_contig(char* contig_id, char* contig) {
 		if (r2 != NULL) {
 
 			if (r1->info->is_rc != r2->info->is_rc) {
-				int insert = abs(r1->pos - r2->pos) + read_len;
-				if (insert >= min_insert && insert <= max_insert) {
+				int insert = abs(r1->pos - r2->pos) + READ_LEN;
+				if (insert >= MIN_INSERT && insert <= MAX_INSERT) {
 					// We have a hit.  Output
 					output_mapping(contig_id, r1, r2, insert);
 				}
@@ -382,6 +384,9 @@ int main(int argc, char** argv) {
 	char* fastq1 = argv[1];
 	char* fastq2 = argv[2];
 	char* contigs = argv[3];
+	READ_LEN = atoi(argv[4]);
+	MIN_INSERT = atoi(argv[5]);
+	MAX_INSERT = atoi(argv[6]);
 
 	fprintf(stderr, "fastq1: %s\n", fastq1);
 	fprintf(stderr, "fastq2: %s\n", fastq2);
