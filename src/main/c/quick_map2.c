@@ -94,12 +94,14 @@ struct my_hash2
 
 struct read_info {
 	char* id;
+	char* seq;
 	char read_num;
 	char is_rc;
 };
 
 struct read_vec {
 	vector<read_info*>* reads;
+	char* seq;
 };
 
 #define READ_BLOCK 10000000
@@ -158,6 +160,7 @@ void add_read_info(char* read_id, char* read_seq_temp, char read_num, char is_rc
 	if (seq_reads == NULL) {
 		seq_reads = (read_vec*) calloc(1, sizeof(read_vec));
 		seq_reads->reads = new vector<read_info*>();
+		seq_reads->seq = seq;
 		advance_read_buf();
 		(*reads)[seq] = seq_reads;
 	}
@@ -166,6 +169,7 @@ void add_read_info(char* read_id, char* read_seq_temp, char read_num, char is_rc
 	read_info1->id = read_id;
 	read_info1->read_num = read_num;
 	read_info1->is_rc = is_rc;
+	read_info1->seq = seq_reads->seq;
 	seq_reads->reads->push_back(read_info1);
 
 //	printf("seq: %s , read_info1->read_num: %d\n", seq, read_info1->read_num);
@@ -255,9 +259,9 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
 	int flag1 = 0x1l | 0x2 |  (r1->info->is_rc ? 0x10 : 0x20) | 0x40;
 	int flag2 = 0x1l | 0x2 |  (r2->info->is_rc ? 0x10 : 0x20) | 0x80;
-	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t*\t*\n";
-	printf(format, read_id, flag1, contig_id, r1->pos, read_len, r2->pos, insert);
-	printf(format, read_id, flag2, contig_id, r2->pos, read_len, r1->pos, insert);
+	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t*\n";
+	printf(format, read_id, flag1, contig_id, r1->pos, read_len, r2->pos, insert, r1->info->seq);
+	printf(format, read_id, flag2, contig_id, r2->pos, read_len, r1->pos, insert, r2->info->seq);
 }
 
 void process_contig(char* contig_id, char* contig) {
