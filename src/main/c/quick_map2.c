@@ -343,6 +343,39 @@ void process_contigs(char* contig_file) {
 			process_contig(contig_id, contig);
 		}
 	}
+	fclose(fp);
+}
+
+void output_header(char* contig_file, int argc, char** argv) {
+	FILE* fp = fopen(contig_file, "r");
+	char contig_id[256];
+	char* contig = (char*) calloc(MAX_CONTIG_LEN, sizeof(char));
+
+	printf("@HD\tVN:1.4\tSO:unsorted\n");
+
+	while (fgets(contig, MAX_CONTIG_LEN, fp) != NULL) {
+		contig[strlen(contig)-1] = '\0';  // strip newline
+
+		if (contig[0] == '>') {
+			strncpy(contig_id, &(contig[1]), 256);
+		} else {
+			printf("@SQ\tSN:%s\tLN:%d\n", contig_id, strlen(contig));
+		}
+	}
+
+
+	char pg[10000];
+	pg[0] = '\0';
+	int chars_left = 9999;
+	for (int i=0; i<argc; i++) {
+		strncat(pg, argv[i], chars_left);
+		strcat(pg, " ");
+		chars_left = 10000 - strlen(pg);
+	}
+
+	printf("@PG\tID:quickmap\tPN:quickmap\tCL:%s\n", pg);
+
+	fclose(fp);
 }
 
 int main(int argc, char** argv) {
@@ -355,6 +388,7 @@ int main(int argc, char** argv) {
 	fprintf(stderr, "contigs: %s\n", contigs);
 
 	load_reads(fastq1, fastq2);
+	output_header(contigs, argc, argv);
 	process_contigs(contigs);
 
 //	for (sparse_hash_map<const char*, struct read_vec*, my_hash, eqstr>::const_iterator it = reads->begin();
