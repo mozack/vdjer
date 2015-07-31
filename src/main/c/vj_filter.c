@@ -20,6 +20,7 @@ int MIN_WINDOW;
 int MAX_WINDOW;
 int WINDOW_SPAN;
 char J_CONSERVED;
+int J_EXTENSION;
 
 #define FRAME_PADDING 100
 #define VJ_SEARCH_END 1000
@@ -328,13 +329,16 @@ void print_windows(char* contig, sparse_hash_set<const char*, my_hash, eqstr>& w
 			char* start = strstr(contig, *it);
 
 			if (start != NULL) {
-				int pad = WINDOW_SPAN - window;
-				int vpad = pad / 2;
-				if (vpad % 3 == 1) {
-					vpad += 2;
-				} else if (vpad % 3 == 2) {
-					vpad += 1;
-				}
+
+				int vpad = WINDOW_SPAN - (window + J_EXTENSION);
+
+//				int pad = WINDOW_SPAN - window;
+//				int vpad = pad / 2;
+//				if (vpad % 3 == 1) {
+//					vpad += 2;
+//				} else if (vpad % 3 == 2) {
+//					vpad += 1;
+//				}
 				start -= vpad;
 
 				/*
@@ -425,9 +429,10 @@ int main(int argc, char** argv) {
 	MAX_WINDOW = atoi(argv[6]);
 	J_CONSERVED = argv[7][0];
 	WINDOW_SPAN = atoi(argv[8]);
+	J_EXTENSION = atoi(argv[9]);
 
-	fprintf(stderr, "V: %s\nJ: %s\ncontigs: %s\ndist: %d\nmin_win: %d\nmax_win: %d\nj_cons: %c\nwindow_span: %d\n",
-			v_file, j_file, contig_file, max_dist, MIN_WINDOW, MAX_WINDOW, J_CONSERVED, WINDOW_SPAN);
+	fprintf(stderr, "V: %s\nJ: %s\ncontigs: %s\ndist: %d\nmin_win: %d\nmax_win: %d\nj_cons: %c\nwindow_span: %d\nj_extension: %d\n",
+			v_file, j_file, contig_file, max_dist, MIN_WINDOW, MAX_WINDOW, J_CONSERVED, WINDOW_SPAN, J_EXTENSION);
 
 	find_candidates(v_file, j_file, contig_file, max_dist);
 }
