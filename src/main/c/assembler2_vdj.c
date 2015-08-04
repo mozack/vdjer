@@ -1779,9 +1779,9 @@ char* assemble(const char* input,
 
 	kmer_size = input_kmer_size;
 
-	printf("Init root scoring start\n");
-	init_root_scoring(bcr_fasta, kmer_size);
-	printf("Init root scoring done\n");
+//	printf("Init root scoring start\n");
+//	init_root_scoring(bcr_fasta, kmer_size);
+//	printf("Init root scoring done\n");
 
 	struct struct_pool* pool = init_pool();
 	sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new sparse_hash_map<const char*, struct node*, my_hash, eqstr>();
@@ -2061,6 +2061,8 @@ int main(int argc, char* argv[]) {
 	MIN_CONTIG_SCORE = atof(argv[5]);
 
 	MAX_RUNNING_THREADS = atoi(argv[6]);
+
+	unaligned_input_file = argv[7];
 
 	min_contig_length = 501;
 
