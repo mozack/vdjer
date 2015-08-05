@@ -106,7 +106,8 @@ struct read_vec {
 	char* seq;
 };
 
-#define READ_BLOCK 10000000
+// Allocate 1GB at a time
+#define READ_BLOCK 1000000000
 
 char* read_buf;
 char* read_buf_start;
@@ -249,6 +250,7 @@ struct map_info {
 	int pos;
 };
 
+//TODO: Output base qualities
 void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
 	char* read_id;
@@ -261,9 +263,12 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
 	int flag1 = 0x1l | 0x2 |  (r1->info->is_rc ? 0x10 : 0x20) | 0x40;
 	int flag2 = 0x1l | 0x2 |  (r2->info->is_rc ? 0x10 : 0x20) | 0x80;
-	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t*\n";
-	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, r1->info->seq);
-	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, r2->info->seq);
+
+	char* quals = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
+
+	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
+	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, r1->info->seq, quals);
+	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, r2->info->seq, quals);
 }
 
 void process_contig(char* contig_id, char* contig) {
@@ -335,6 +340,7 @@ void process_contigs(char* contig_file) {
 	FILE* fp = fopen(contig_file, "r");
 	char contig_id[256];
 	char* contig = (char*) calloc(MAX_CONTIG_LEN, sizeof(char));
+	int num_contigs = 0;
 
 	while (fgets(contig, MAX_CONTIG_LEN, fp) != NULL) {
 		contig[strlen(contig)-1] = '\0';
@@ -342,13 +348,23 @@ void process_contigs(char* contig_file) {
 		if (contig[0] == '>') {
 			strncpy(contig_id, &(contig[1]), 256);
 		} else {
+//			fprintf(stderr, "Processing contig [%s]\n", contig_id);
+//			fflush(stderr);
+
 			process_contig(contig_id, contig);
+			num_contigs++;
+//			if ((num_contigs % 1000) == 0) {
+				fprintf(stderr, "[%d] contigs processed\n", num_contigs);
+				fflush(stderr);
+				fflush(stdout);
+//			}
 		}
 	}
 	fclose(fp);
 }
 
 void output_header(char* contig_file, int argc, char** argv) {
+	fprintf(stderr, "Writing header\n");
 	FILE* fp = fopen(contig_file, "r");
 	char contig_id[256];
 	char* contig = (char*) calloc(MAX_CONTIG_LEN, sizeof(char));
@@ -378,6 +394,8 @@ void output_header(char* contig_file, int argc, char** argv) {
 	printf("@PG\tID:quickmap\tPN:quickmap\tCL:%s\n", pg);
 
 	fclose(fp);
+	fprintf(stderr, "Done writing header\n");
+	fflush(stderr);
 }
 
 int main(int argc, char** argv) {
