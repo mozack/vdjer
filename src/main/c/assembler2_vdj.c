@@ -1229,7 +1229,7 @@ int build_contigs(
 				status = STOPPED_ON_REPEAT;
 			}
 		}
-		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE) || contig->size >= (MAX_CONTIG_SIZE-kmer_size)) {
+		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->size >= (MAX_CONTIG_SIZE-kmer_size)) {
 //		else if (contig->curr_node->toNodes == NULL) {
 			// We've reached the end of the contig.
 			// Append entire current node.
