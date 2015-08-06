@@ -1131,9 +1131,9 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 
 		if (contig->is_repeat) {
-			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score/(double)strlen(buf));
+			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score);
 		} else {
-			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score/(double)strlen(buf));
+			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
 		}
 
 		pthread_mutex_lock(&contig_writer_mutex);
@@ -1229,7 +1229,7 @@ int build_contigs(
 				status = STOPPED_ON_REPEAT;
 			}
 		}
-		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE) {
+		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE) || contig->size >= (MAX_CONTIG_SIZE-kmer_size)) {
 //		else if (contig->curr_node->toNodes == NULL) {
 			// We've reached the end of the contig.
 			// Append entire current node.
