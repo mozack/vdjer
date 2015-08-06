@@ -2062,7 +2062,9 @@ int main(int argc, char* argv[]) {
 
 	MAX_RUNNING_THREADS = atoi(argv[6]);
 
-	unaligned_input_file = argv[7];
+	if (argc >= 8) {
+		unaligned_input_file = argv[7];
+	}
 
 	min_contig_length = 501;
 
