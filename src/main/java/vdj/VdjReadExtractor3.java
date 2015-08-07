@@ -31,11 +31,13 @@ public class VdjReadExtractor3 {
 	
 	private Set<String> readIds = new HashSet<String>();
 	private Set<String> reads = new HashSet<String>();
-	private Set<String> constantReads = new HashSet<String>();
+	private Set<String> secondaryReads = new HashSet<String>();
 	private int numReads = 0;
 	private ReverseComplementor rc = new ReverseComplementor();	
+	private int kmerSize;
+	private Set<String> vdjKmers;
 	
-	private void getReads(String regionFile, SAMFileReader reader, Set<String> reads) throws IOException {
+	private void getReads(String regionFile, SAMFileReader reader, Set<String> reads, Set<String> secondaryReads) throws IOException {
 		List<VdjRegion> regions = null;
 		
 		if (regionFile.equals("unmapped")) {
@@ -50,6 +52,53 @@ public class VdjReadExtractor3 {
 			}
 		}
 	}
+	
+	private boolean hasVdjKmer(String bases, int kmerSize) {
+		if (kmerSize == 0) {
+			return true;
+		}
+		
+		for (int i=0; i<=bases.length()-kmerSize; i++) {
+			String kmer = bases.substring(i, i+kmerSize);
+			if (vdjKmers.contains(kmer)) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	private Set<String> loadKmers(String fasta, int kmerSize) throws IOException {
+		Set<String> kmers = new HashSet<String>();
+		if (kmerSize > 0) {
+			BufferedReader reader = new BufferedReader(new FileReader(fasta));
+			
+			String id = reader.readLine();
+			String bases = null;
+			if (id != null) {
+				bases = reader.readLine();
+			}
+			
+			while (id != null && bases != null) {
+				
+				for (int i=0; i<=bases.length()-kmerSize; i++) {
+					String kmer = bases.substring(i, i+kmerSize); 
+					kmers.add(kmer);
+					kmers.add(rc.reverseComplement(kmer));
+				}
+				
+				id = reader.readLine();
+				bases = null;
+				if (id != null) {
+					bases = reader.readLine();
+				}
+			}
+			
+			reader.close();
+		}
+		
+		return kmers;
+	}
 
 	private void processReadQuery(CloseableIterator<SAMRecord> iter, Set<String> reads, String regionFile) {
 		while (iter.hasNext()) {
@@ -57,7 +106,12 @@ public class VdjReadExtractor3 {
 			if (regionFile.equals("unmapped")) {
 				// Only include unmapped reads if both read and mate are unmapped
 				if (read.getReadUnmappedFlag() && read.getMateUnmappedFlag()) {
-					reads.add(read.getReadName());;
+					// If an unmapped read has a VDJ kmer, add it to the primary read set
+					if (hasVdjKmer(read.getReadString(), kmerSize)) {
+						reads.add(read.getReadName());
+					} else {
+						secondaryReads.add(read.getReadName());
+					}
 				}
 			} else {
 				reads.add(read.getReadName());
@@ -66,26 +120,34 @@ public class VdjReadExtractor3 {
 		iter.close();
 	}
 	
-	public void extract(String inFile, String out, String constantOut, String vdjRegionFile, String constantRegionFile) throws IOException {
+	public void extract(String inFile, String out, String constantOut, String vdjRegionFile, String constantRegionFile,
+			String vdjFasta, int kmerSize) throws IOException {
 				
+		loadKmers(vdjFasta, kmerSize);
+		
 		SAMFileReader reader = new SAMFileReader(new File(inFile));
 		reader.setValidationStringency(ValidationStringency.SILENT);
 		
 		BufferedWriter writer = new BufferedWriter(new FileWriter(out, false));
 		BufferedWriter constantWriter = new BufferedWriter(new FileWriter(constantOut, false));
 	
+		// Constant reads always go to secondary read set
 		System.out.println("Retrieving constant reads.");
-		getReads(constantRegionFile, reader, constantReads);
+		getReads(constantRegionFile, reader, secondaryReads, secondaryReads);
+		
+		// Variable reads always go to primary read set
 		System.out.println("Retrieving variable reads");
-		getReads(vdjRegionFile, reader, reads);
+		getReads(vdjRegionFile, reader, reads, reads);
+		
+		// Unampped reads can go to either read set depending upon content
 		System.out.println("Retrieving unmapped reads");
-		getReads("unmapped", reader, reads);
+		getReads("unmapped", reader, reads, secondaryReads);
 		
 		System.out.println("Looping over all reads...");
 
 		for (SAMRecord read : reader) {
 			
-			if (constantReads.contains(read.getReadName())) {
+			if (secondaryReads.contains(read.getReadName())) {
 				String id = read.getReadName() + "___" + (read.getFirstOfPairFlag() ? "1" : "2");
 				
 				if (!readIds.contains(id)) {
@@ -139,7 +201,9 @@ public class VdjReadExtractor3 {
 		String constantOut = args[2];
 		String vdjRegionsFile = args[3];
 		String constantRegionsFile = args[4];
+		String vdjFasta = args[5];
+		int kmerSize = Integer.parseInt(args[6]);
 		
-		new VdjReadExtractor3().extract(input, output, constantOut, vdjRegionsFile, constantRegionsFile);
+		new VdjReadExtractor3().extract(input, output, constantOut, vdjRegionsFile, constantRegionsFile, vdjFasta, kmerSize);
 	}
 }
