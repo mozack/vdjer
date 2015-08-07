@@ -1045,6 +1045,7 @@ struct contig {
 	sparse_hash_set<const char*, my_hash, eqstr>* visited_nodes;
 	double score;
 	int size;  // really curr_index now
+	int real_size;
 	char is_repeat;
 };
 
@@ -1084,6 +1085,7 @@ struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_c
 	copy->fragments = new vector<char*>(*(orig->fragments));
 
 	copy->size = orig->size;
+	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
 	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
 	copy->score = orig->score;
@@ -1230,7 +1232,7 @@ int build_contigs(
 				status = STOPPED_ON_REPEAT;
 			}
 		}
-		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->size >= (MAX_CONTIG_SIZE-kmer_size)) {
+		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size)) {
 //		else if (contig->curr_node->toNodes == NULL) {
 			// We've reached the end of the contig.
 			// Append entire current node.
@@ -1252,6 +1254,7 @@ int build_contigs(
 		else {
 			// Append first base from current node
 			contig->seq[contig->size++] = contig->curr_node->kmer[0];
+			contig->real_size += 1;
 			if (contig->size >= MAX_CONTIG_SIZE) {
 				char kmer[1024];
 				memset(kmer, 0, 1024);
