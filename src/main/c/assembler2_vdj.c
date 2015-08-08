@@ -1057,7 +1057,7 @@ struct contig* new_contig() {
 	curr_contig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
-	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
+	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(MAX_CONTIG_SIZE);
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
@@ -1087,7 +1087,8 @@ struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_c
 	copy->size = orig->size;
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
-	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
+//	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
+	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(MAX_CONTIG_SIZE);
 	copy->score = orig->score;
 
 	return copy;
