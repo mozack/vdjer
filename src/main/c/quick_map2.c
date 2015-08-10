@@ -353,11 +353,11 @@ void process_contigs(char* contig_file) {
 
 			process_contig(contig_id, contig);
 			num_contigs++;
-//			if ((num_contigs % 1000) == 0) {
+			if ((num_contigs % 1000) == 0) {
 				fprintf(stderr, "[%d] contigs processed\n", num_contigs);
 				fflush(stderr);
 				fflush(stdout);
-//			}
+			}
 		}
 	}
 	fclose(fp);
