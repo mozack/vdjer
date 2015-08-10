@@ -1118,6 +1118,37 @@ int get_contig_len(struct contig* contig) {
 }
 
 int output_contigs = 0;
+
+void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
+	char buf[1024];
+
+	output_contigs += 1;
+
+	if (contig->real_size >= min_contig_length) {
+		contig_count++;
+
+		if (contig->is_repeat) {
+			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score);
+		} else {
+			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
+		}
+
+		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
+			strcat(buf, *it);
+		}
+
+		if (strlen(contig->seq) > 0) {
+			strcat(buf, contig->seq);
+		}
+
+		strcat(buf, "\n");
+		pthread_mutex_lock(&contig_writer_mutex);
+		fprintf(stderr, buf);
+		pthread_mutex_unlock(&contig_writer_mutex);
+	}
+}
+
+/*
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
 	char buf[1024];
 
@@ -1125,9 +1156,9 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 //		printf("contig string too long: %s\n", prefix);
 //		exit(-1);
 //	}
-	pthread_mutex_lock(&contig_writer_mutex);
+//	pthread_mutex_lock(&contig_writer_mutex);
 	output_contigs += 1;
-	pthread_mutex_unlock(&contig_writer_mutex);
+//	pthread_mutex_unlock(&contig_writer_mutex);
 
 //	if (strlen(contig->seq) >= min_contig_length) {
 	if (get_contig_len(contig) >= min_contig_length) {
@@ -1140,7 +1171,9 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
 		}
 
-		pthread_mutex_lock(&contig_writer_mutex);
+
+
+//		pthread_mutex_lock(&contig_writer_mutex);
 //		fprintf(stderr, "%s%s\n", buf, contig->seq);
 		fprintf(stderr, "%s", buf);
 		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
@@ -1150,13 +1183,12 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			fprintf(stderr, "%s", contig->seq);
 		}
 		fprintf(stderr, "\n");
-		pthread_mutex_unlock(&contig_writer_mutex);
+//		pthread_mutex_unlock(&contig_writer_mutex);
 
 //		fflush(stderr);
 	}
 }
-
-
+*/
 
 
 //#define OK 0
