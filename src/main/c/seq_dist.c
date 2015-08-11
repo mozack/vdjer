@@ -70,6 +70,7 @@ void process_kmers(char* input, unsigned long start, unsigned long end) {
 	}
 }
 
+/*
 int main(int argc, char** argv) {
 
 	if (argc != 4) {
@@ -83,7 +84,6 @@ int main(int argc, char** argv) {
 
 	process_kmers(input, start, end);
 
-	/*
 	char* s1 = "GATTCCGGCGCCGATC";
 //	char* s2 = "GATACCGGCGCCGATG";
 	char* s2 = "AGAAAAAAAAAAACAA";
@@ -91,5 +91,6 @@ int main(int argc, char** argv) {
 
 	printf("dist: %d\n", dist);
 
-	*/
+
 }
+*/

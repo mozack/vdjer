@@ -41,6 +41,14 @@ unsigned long seq_to_int(const char* seq) {
 
 /*
 int main(int argc, char** argv) {
-	printf("%lu\n", seq_to_int("CACGGCCGTATATTTC"));
+//	ACACGGCCGTATATTT
+//	CACGGCCGTATATTTC
+//	CGGCCGTATATTTCTG
+//	GACACGGCCGTATATT
+
+	printf("%lu\n", seq_to_int("ACTTCTGGGGCCAGGG"));
+	printf("%lu\n", seq_to_int("GACTTCTGGGGCCAGG"));
+	printf("%lu\n", seq_to_int("TTCTGGGGCCAGGGAA"));
 }
+
 */

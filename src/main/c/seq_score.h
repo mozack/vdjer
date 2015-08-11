@@ -1,6 +1,5 @@
 #ifndef __SEQ_SCORE__
 #define __SEQ_SCORE__ 1
-#endif
 
 #define GAP_PENALTY -2
 #define MATCH_SCORE 1
@@ -15,3 +14,5 @@ char** init_root_scoring(const char* fasta, int kmer_size);
 // Score the input sequence against all sequences loaded via init_root_scoring
 // returning the max score.
 int score_seq(const char* seq);
+
+#endif

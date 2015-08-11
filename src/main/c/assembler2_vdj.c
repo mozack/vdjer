@@ -15,6 +15,7 @@
 #include <stdexcept>
 //#include "abra_NativeAssembler.h"
 #include "seq_score.h"
+#include "vj_filter.h"
 
 using namespace std;
 using google::sparse_hash_map;
@@ -26,6 +27,9 @@ using google::sparse_hash_set;
 //#define MIN_NODE_FREQUENCY 3
 //#define MIN_NODE_FREQUENCY 2
 //#define MAX_CONTIG_SIZE 10000
+
+
+#define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
 #define MAX_READ_LENGTH 1001
 //#define MIN_BASE_QUALITY 20
@@ -73,6 +77,9 @@ pthread_mutex_t marker_trackback_mutex;
 
 int running_threads = 0;
 
+// Tracks vjf windows
+sparse_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows;
+
 #define MAX_DISTANCE_FROM_MARKER 1000
 
 // #define MAX_TRACEBACK_STACK_SIZE 1024
@@ -87,7 +94,6 @@ int running_threads = 0;
 //__thread int min_base_quality;
 
 int read_length;
-int min_contig_length;
 int kmer_size;
 int min_node_freq;
 int min_base_quality;
@@ -95,51 +101,6 @@ int min_base_quality;
 //#define MIN_CONTIG_SCORE -6
 float MIN_CONTIG_SCORE;
 
-
-#define BIG_CONSTANT(x) (x##LLU)
-
-uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
-{
-  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
-  const int r = 47;
-
-  uint64_t h = seed ^ (len * m);
-
-  const uint64_t * data = (const uint64_t *)key;
-  const uint64_t * end = data + (len/8);
-
-  while(data != end)
-  {
-    uint64_t k = *data++;
-
-    k *= m;
-    k ^= k >> r;
-    k *= m;
-
-    h ^= k;
-    h *= m;
-  }
-
-  const unsigned char * data2 = (const unsigned char*)data;
-
-  switch(len & 7)
-  {
-  case 7: h ^= uint64_t(data2[6]) << 48;
-  case 6: h ^= uint64_t(data2[5]) << 40;
-  case 5: h ^= uint64_t(data2[4]) << 32;
-  case 4: h ^= uint64_t(data2[3]) << 24;
-  case 3: h ^= uint64_t(data2[2]) << 16;
-  case 2: h ^= uint64_t(data2[1]) << 8;
-  case 1: h ^= uint64_t(data2[0]);
-          h *= m;
-  };
-
-  h ^= h >> r;
-  h *= m;
-  h ^= h >> r;
-
-  return h;
-}
 
 
 struct eqstr
@@ -1120,18 +1081,19 @@ int get_contig_len(struct contig* contig) {
 int output_contigs = 0;
 
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
-	char buf[1024];
 
-	output_contigs += 1;
-
-	if (contig->real_size >= min_contig_length) {
+	if (contig->real_size >= MIN_CONTIG_SIZE) {
+		char buf[MAX_CONTIG_SIZE+1];
+		output_contigs += 1;
 		contig_count++;
 
-		if (contig->is_repeat) {
-			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score);
-		} else {
-			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
-		}
+//		if (contig->is_repeat) {
+//			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score);
+//		} else {
+//			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
+//		}
+
+		buf[0] = '\0';
 
 		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
 			strcat(buf, *it);
@@ -1141,55 +1103,20 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			strcat(buf, contig->seq);
 		}
 
-		strcat(buf, "\n");
-		pthread_mutex_lock(&contig_writer_mutex);
-		fprintf(stderr, buf);
-		pthread_mutex_unlock(&contig_writer_mutex);
-	}
-}
-
-/*
-void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
-	char buf[1024];
-
-//	if (strlen(contigs) + strlen(contig->seq) > MAX_TOTAL_CONTIG_LEN) {
-//		printf("contig string too long: %s\n", prefix);
-//		exit(-1);
-//	}
-//	pthread_mutex_lock(&contig_writer_mutex);
-	output_contigs += 1;
-//	pthread_mutex_unlock(&contig_writer_mutex);
-
-//	if (strlen(contig->seq) >= min_contig_length) {
-	if (get_contig_len(contig) >= min_contig_length) {
-		contig_count++;
-
-
-		if (contig->is_repeat) {
-			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score);
-		} else {
-			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
-		}
-
-
+		vjf_search(buf, vjf_windows);
 
 //		pthread_mutex_lock(&contig_writer_mutex);
-//		fprintf(stderr, "%s%s\n", buf, contig->seq);
-		fprintf(stderr, "%s", buf);
-		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
-			fprintf(stderr, "%s", *it);
-		}
-		if (strlen(contig->seq) > 0) {
-			fprintf(stderr, "%s", contig->seq);
-		}
-		fprintf(stderr, "\n");
+//		fprintf(stderr, buf);
 //		pthread_mutex_unlock(&contig_writer_mutex);
-
-//		fflush(stderr);
 	}
 }
-*/
 
+void output_windows() {
+	int contig_num = 1;
+	for (sparse_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
+		fprintf(stderr, ">vjf_%d\n%s\n", contig_num++, *it);
+	}
+}
 
 //#define OK 0
 //#define TOO_MANY_PATHS_FROM_ROOT -1
@@ -1979,6 +1906,10 @@ char* assemble(const char* input,
 	pthread_mutex_destroy(&contig_writer_mutex);
 	pthread_mutex_destroy(&marker_trackback_mutex);
 
+	// Write windows to disk
+	printf("Writing windows to disk\n");
+	output_windows();
+
 	printf("output contigs: %d\n", output_contigs);
 
 //	write_graph(nodes);
@@ -2103,7 +2034,17 @@ int main(int argc, char* argv[]) {
 		unaligned_input_file = argv[7];
 	}
 
-	min_contig_length = 501;
+	char* vjf_v_file = argv[8];
+	char* vjf_j_file = argv[9];
+	int vjf_max_dist = atoi(argv[10]);
+	int vjf_min_win = atoi(argv[11]);
+	int vjf_max_win = atoi(argv[12]);
+	char vjf_j_conserved = argv[13][0];
+	int vjf_window_span = atoi(argv[14]);
+	int vjf_j_extension = atoi(argv[15]);
+
+	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
+			vjf_j_conserved, vjf_window_span, vjf_j_extension);
 
 //	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1.b.reads");
 //	char* unaligned_input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1_unaligned.c.reads");
