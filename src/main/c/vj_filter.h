@@ -27,6 +27,6 @@ void vjf_init(char* v_file, char* j_file, int max_dist, int min_win, int max_win
 		char j_conserved, int window_span, int j_extension);
 
 // Search for candidate VDJ windows
-void vjf_search(char* contig, google::sparse_hash_set<const char*, vjf_hash, vjf_eqstr>& windows);
+void vjf_search(char* contig, google::dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows);
 
 #endif

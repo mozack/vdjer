@@ -6,10 +6,12 @@
 #include <vector>
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
+#include <sparsehash/dense_hash_set>
 #include "vj_filter.h"
 
 using namespace std;
 using google::sparse_hash_set;
+using google::dense_hash_set;
 
 // Rough defaults with vmer and jmer 10 bases from edges of annotated v and j genes
 //#define MIN_WINDOW 10
@@ -251,7 +253,7 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, vjf_hash, vjf_e
 	return false;
 }
 
-void print_windows(char* contig, sparse_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
+void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
 
 	// Allocate space for up to 100,000 CDR3's
 	// TODO: Allocate space as needed, not all up front
@@ -386,7 +388,7 @@ void vjf_init(char* v_file, char* j_file, int max_dist, int min_win, int max_win
 
 
 
-void vjf_search(char* contig, sparse_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
+void vjf_search(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
 	print_windows(contig, windows);
 }
 
@@ -406,7 +408,7 @@ void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist
 
 	char contig[100000];
 
-	sparse_hash_set<const char*, vjf_hash, vjf_eqstr> windows;
+	dense_hash_set<const char*, vjf_hash, vjf_eqstr> windows;
 
 	int i = 0;
 	while (fgets(contig, 100000, fp) != NULL) {
@@ -421,7 +423,7 @@ void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist
 
 	fprintf(stderr, "Outputting windows\n");
 
-	for (sparse_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=windows.begin(); it!=windows.end(); it++) {
+	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=windows.begin(); it!=windows.end(); it++) {
 		printf("%s\n", *it);
 	}
 

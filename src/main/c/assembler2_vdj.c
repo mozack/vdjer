@@ -12,6 +12,7 @@
 #include <vector>
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
+#include <sparsehash/dense_hash_set>
 #include <stdexcept>
 //#include "abra_NativeAssembler.h"
 #include "seq_score.h"
@@ -20,6 +21,7 @@
 using namespace std;
 using google::sparse_hash_map;
 using google::sparse_hash_set;
+using google::dense_hash_set;
 
 //#define READ_LENGTH 100
 //#define KMER 63
@@ -78,7 +80,7 @@ pthread_mutex_t marker_trackback_mutex;
 int running_threads = 0;
 
 // Tracks vjf windows
-sparse_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows;
+dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows;
 
 #define MAX_DISTANCE_FROM_MARKER 1000
 
@@ -1113,7 +1115,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 void output_windows() {
 	int contig_num = 1;
-	for (sparse_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
+	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
 		fprintf(stderr, ">vjf_%d\n%s\n", contig_num++, *it);
 	}
 }
@@ -2043,6 +2045,7 @@ int main(int argc, char* argv[]) {
 	int vjf_window_span = atoi(argv[14]);
 	int vjf_j_extension = atoi(argv[15]);
 
+	vjf_windows.set_empty_key(NULL);
 	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
 			vjf_j_conserved, vjf_window_span, vjf_j_extension);
 
