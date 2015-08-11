@@ -157,7 +157,7 @@ int find_frame(char* contig, int v, int window) {
 	for (int i=0; i<3; i++) {
 		if (is_in_frame(start, end, i, contig)) {
 			if (frame != -1) {
-				fprintf(stderr, "Multiple frames in: %s : %d\n", contig, v);
+				printf("Multiple frames in: %s : %d\n", contig, v);
 			} else {
 				frame = i;
 			}
@@ -363,10 +363,10 @@ void init(char* v_file, char* j_file, int max_dist) {
 	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 	jmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 
-	fprintf(stderr, "Loading vmers\n");
+	printf("Loading vmers\n");
 	fflush(stderr);
 	load_kmers(v_file, vmers, max_dist);
-	fprintf(stderr, "Loading jmers\n");
+	printf("Loading jmers\n");
 	fflush(stderr);
 	load_kmers(j_file, jmers, max_dist);
 
