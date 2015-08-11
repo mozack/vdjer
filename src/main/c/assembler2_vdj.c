@@ -125,7 +125,7 @@ struct struct_pool {
 	struct read_pool* read_pool;
 };
 
-#define NODES_PER_BLOCK 1000000
+#define NODES_PER_BLOCK 5000000
 #define MAX_NODE_BLOCKS 50000
 #define READS_PER_BLOCK 1000000
 #define MAX_READ_BLOCKS 100000
