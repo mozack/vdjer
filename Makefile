@@ -4,7 +4,7 @@
 SRCDIR=src/main/c
 
 vdj:
-	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $(SRCDIR)/assembler2_vdj.c $(SRCDIR)/seq_score.c -o vdj
+	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $(SRCDIR)/assembler2_vdj.c $(SRCDIR)/seq_score.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c -o vdj
 
 vdjg:
 	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $(SRCDIR)/assembler2_vdj_greedy.c $(SRCDIR)/seq_score.c -o vdjg
