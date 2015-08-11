@@ -20,7 +20,7 @@ int base_val(char base) {
 			val = 3;
 			break;
 		default:
-			fprintf(stderr, "Error converting base: %c, %d\n", base, base);
+			printf("Error converting base: %c, %d\n", base, base);
 			exit(-1);
 	}
 
