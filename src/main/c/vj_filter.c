@@ -347,7 +347,8 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 							strcpy(final_win, win);
 
 							pthread_mutex_lock(&vjf_mutex);
-							windows.insert(final_win);
+//							windows.insert(final_win);
+							fprintf(stderr, final_win);
 							pthread_mutex_unlock(&vjf_mutex);
 						}
 					}
