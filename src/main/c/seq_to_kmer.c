@@ -21,8 +21,8 @@ int base_val(char base) {
 			break;
 		default:
 			printf("Error converting base: %c, %d\n", base, base);
-			//exit(-1);
-			return -1;
+			exit(-1);
+//			return -1;
 	}
 
 	return val;
