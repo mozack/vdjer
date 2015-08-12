@@ -1194,11 +1194,11 @@ int build_contigs(
 				status = STOPPED_ON_REPEAT;
 			}
 		}
-		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size)) {
+		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size-1)) {
 //		else if (contig->curr_node->toNodes == NULL) {
 			// We've reached the end of the contig.
 			// Append entire current node.
-			memcpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
+			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
 
 			// Now, write the contig
 			if (!shadow_mode) {
