@@ -1870,7 +1870,7 @@ char* assemble(const char* input,
 			case TOO_MANY_CONTIGS:
 				printf("TOO_MANY_CONTIGS: %s\n", prefix);
 				contig_count = 0;
-				break;
+				break;R
 			case STOPPED_ON_REPEAT:
 				printf("STOPPED_ON_REPEAT: %s\n", prefix);
 				contig_count = 0;
@@ -1894,6 +1894,7 @@ char* assemble(const char* input,
 
 		if ((num_roots % 10) == 0) {
 			printf("Processed %d root nodes\n", num_roots);
+			printf("Num candidate contigs: %d\n", vjf_windows.size());
 			fflush(stdout);
 		}
 	}
@@ -1912,7 +1913,7 @@ char* assemble(const char* input,
 	printf("Writing windows to disk\n");
 	output_windows();
 
-	printf("output contigs: %d\n", output_contigs);
+//	printf("output contigs: %d\n", output_contigs);
 
 //	write_graph(nodes);
 
