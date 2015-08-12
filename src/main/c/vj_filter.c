@@ -270,10 +270,10 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 
 	for (int i=0; i<len; i++) {
 		unsigned long kmer = seq_to_int(contig_index);
-		if (kmer == 0) {
-			printf("0 kmer in: [%s] at: [%s].  len: [%d]. contig: [%x] contig_index: [%x]\n", contig, contig_index, len, contig, contig_index);
-
-		}
+//		if (kmer == 0) {
+//			printf("0 kmer in: [%s] at: [%s].  len: [%d]. contig: [%x] contig_index: [%x]\n", contig, contig_index, len, contig, contig_index);
+//
+//		}
 
 		if (matches_vmer(kmer)) {
 //			fprintf(stderr, "v: %d\n", i);
