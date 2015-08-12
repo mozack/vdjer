@@ -21,7 +21,8 @@ int base_val(char base) {
 			break;
 		default:
 			printf("Error converting base: %c, %d\n", base, base);
-			exit(-1);
+			//exit(-1);
+			return -1;
 	}
 
 	return val;
@@ -33,7 +34,12 @@ unsigned long seq_to_int(const char* seq) {
 
 	for (int i=0; i<SEQ_LEN; i++) {
 		val = val << 2;
-		val += base_val(seq[i]);
+		int b = base_val(seq[i]);
+		if (b < 0) {
+			printf("seq: %s\n", seq);
+			return 0;
+		}
+		val += b;
 	}
 
 	return val;
