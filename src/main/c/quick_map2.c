@@ -252,10 +252,28 @@ void load_reads(char* file1, char* file2) {
 		line2[strlen(line2)-1] = '\0';
 
 		if (line_num == 1) {
+
+			// Strip forward slash and anything following
 			char* pch = strchr(line1, '/');
-			*pch= '\0';
+			if (pch != NULL) {
+				*pch= '\0';
+			}
+
 			pch = strchr(line2, '/');
-			*pch = '\0';
+			if (pch != NULL) {
+				*pch = '\0';
+			}
+
+			// Strip spaces and anything following
+			pch = strchr(line1, ' ');
+			if (pch != NULL) {
+				*pch= '\0';
+			}
+
+			pch = strchr(line2, ' ');
+			if (pch != NULL) {
+				*pch = '\0';
+			}
 
 			if (strncmp(line1, line2, MAX_LINE) != 0) {
 				fprintf(stderr, "Mismatched reads: %s -- %s\n", line1, line2);
