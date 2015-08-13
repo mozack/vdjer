@@ -62,6 +62,8 @@ int READ_LEN;
 int MIN_INSERT;
 int MAX_INSERT;
 
+//
+// String comparison bounded at READ_LEN
 struct eqstr
 {
   bool operator()(const char* s1, const char* s2) const
@@ -70,6 +72,8 @@ struct eqstr
   }
 };
 
+//
+// String hash bounded at READ_LEN
 struct my_hash
 {
 	uint64_t operator()(const char* seq) const
@@ -78,6 +82,8 @@ struct my_hash
 	}
 };
 
+//
+// String comparison based upon strlen
 struct eqstr2
 {
   bool operator()(const char* s1, const char* s2) const
@@ -86,6 +92,8 @@ struct eqstr2
   }
 };
 
+//
+// String hash based upon strlen
 struct my_hash2
 {
 	uint64_t operator()(const char* seq) const
@@ -97,6 +105,7 @@ struct my_hash2
 struct read_info {
 	char* id;
 	char* seq;
+	char* quals;
 	char read_num;
 	char is_rc;
 };
@@ -111,10 +120,14 @@ struct read_vec {
 
 char* read_buf;
 char* read_buf_start;
+char* qual_buf;
+char* qual_buf_start;
 
 #define MAX_LINE 1024
 #define MAX_CONTIG_LEN 10000
 
+//
+// Key = read sequence, Value = vector of read_info
 sparse_hash_map<const char*, struct read_vec*, my_hash, eqstr>* reads = new sparse_hash_map<const char*, struct read_vec*, my_hash, eqstr>();
 
 void advance_read_buf() {
@@ -129,6 +142,21 @@ void advance_read_buf() {
 		read_buf_start = read_buf;
 	}
 }
+
+//TODO: Factor out common code
+void advance_qual_buf() {
+	// Advance read buffer to next open slot (TODO: Better to stay on word boundary?)
+	qual_buf = qual_buf + strlen(qual_buf) + 1;
+
+	// If we are approaching the end of the read buffer, allocate more space
+	if (qual_buf-qual_buf_start > READ_BLOCK-1024) {
+		fprintf(stderr, "increasing qual buf\n");
+		fflush(stderr);
+		qual_buf = (char*) calloc(READ_BLOCK, sizeof(char));
+		qual_buf_start = qual_buf;
+	}
+}
+
 
 char complement(char ch) {
 	switch(ch) {
@@ -153,10 +181,20 @@ int rc(char* input, char* output) {
 	output[strlen(input)] = '\0';
 }
 
-void add_read_info(char* read_id, char* read_seq_temp, char read_num, char is_rc) {
+int reverse(char* input, char* output) {
+	int out_idx = 0;
+	for (int i=strlen(input)-1; i >=0; i--) {
+		output[out_idx++] = input[i];
+	}
+	output[strlen(input)] = '\0';
+}
+
+void add_read_info(char* read_id, char* read_seq_temp, char* quals_temp, char read_num, char is_rc) {
 
 	strncpy(read_buf, read_seq_temp, MAX_LINE);
+	strncpy(qual_buf, quals_temp, MAX_LINE);
 	char* seq = read_buf;
+	char* quals = qual_buf;
 	read_vec* seq_reads = (*reads)[seq];
 
 	// No hit in hash map.  Add new entry
@@ -169,10 +207,15 @@ void add_read_info(char* read_id, char* read_seq_temp, char read_num, char is_rc
 	}
 
 	read_info* read_info1 = (read_info*) calloc(1, sizeof(read_info));
+
 	read_info1->id = read_id;
 	read_info1->read_num = read_num;
 	read_info1->is_rc = is_rc;
 	read_info1->seq = seq_reads->seq;
+
+	read_info1->quals = quals;
+	advance_qual_buf();
+
 	seq_reads->reads->push_back(read_info1);
 
 //	printf("seq: %s , read_info1->read_num: %d\n", seq, read_info1->read_num);
@@ -188,10 +231,17 @@ void load_reads(char* file1, char* file2) {
 	read_buf = (char*) calloc(READ_BLOCK, sizeof(char));
 	read_buf_start = read_buf;
 
+	qual_buf = (char*) calloc(READ_BLOCK, sizeof(char));
+	qual_buf_start = qual_buf;
+
 	char line1[MAX_LINE];
 	char line2[MAX_LINE];
+	char bases1[MAX_LINE];
+	char bases2[MAX_LINE];
 	char rc1[MAX_LINE];
 	char rc2[MAX_LINE];
+	char rc_quals1[MAX_LINE];
+	char rc_quals2[MAX_LINE];
 
 	char* read_id;
 	char line_num = 1;
@@ -219,18 +269,25 @@ void load_reads(char* file1, char* file2) {
 		} else if (line_num == 2) {
 			rc(line1, rc1);
 			rc(line2, rc2);
+			strncpy(bases1, line1, MAX_LINE);
+			strncpy(bases2, line2, MAX_LINE);
 
 //			printf("line1: %s -- line2: %s\n", line1, line2);
 //			printf("rc1: %s -- rc2: %s\n", rc1, rc2);
 
+
+		} else if (line_num == 4) {
+			reverse(line1, rc_quals1);
+			reverse(line2, rc_quals2);
+
 			// Read 1, Forward
-			add_read_info(read_id, line1, 1, 0);
+			add_read_info(read_id, bases1, line1, 1, 0);
 			// Read 1, Reverse
-			add_read_info(read_id, rc1, 1, 1);
+			add_read_info(read_id, rc1, rc_quals1, 1, 1);
 			// Read 2, Forward
-			add_read_info(read_id, line2, 2, 0);
+			add_read_info(read_id, bases2, line2, 2, 0);
 			// Read 2, Reverse
-			add_read_info(read_id, rc2, 2, 1);
+			add_read_info(read_id, rc2, rc_quals2, 2, 1);
 		}
 
 		if (line_num == 4) {
@@ -267,8 +324,8 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	char* quals = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
 
 	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
-	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, r1->info->seq, quals);
-	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, r2->info->seq, quals);
+	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, r1->info->seq, r1->info->quals);
+	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, r2->info->seq, r2->info->quals);
 }
 
 void process_contig(char* contig_id, char* contig) {
