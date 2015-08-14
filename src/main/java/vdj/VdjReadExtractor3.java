@@ -60,6 +60,8 @@ public class VdjReadExtractor3 {
 		
 		for (int i=0; i<=bases.length()-kmerSize; i++) {
 			String kmer = bases.substring(i, i+kmerSize);
+//			System.out.println("kmer: " + kmer);
+//			System.out.println("vdjKmers: " + vdjKmers);
 			if (vdjKmers.contains(kmer)) {
 				return true;
 			}
@@ -97,6 +99,8 @@ public class VdjReadExtractor3 {
 			reader.close();
 		}
 		
+		System.out.println("Loaded " + kmers.size() + " kmers.");
+		
 		return kmers;
 	}
 
@@ -123,7 +127,10 @@ public class VdjReadExtractor3 {
 	public void extract(String inFile, String out, String constantOut, String vdjRegionFile, String constantRegionFile,
 			String vdjFasta, int kmerSize) throws IOException {
 				
-		loadKmers(vdjFasta, kmerSize);
+		this.kmerSize = kmerSize;
+		System.out.println("Kmer size: " + this.kmerSize);
+		this.vdjKmers = loadKmers(vdjFasta, kmerSize);
+		System.out.println("Kmer set size: " + this.vdjKmers.size());
 		
 		SAMFileReader reader = new SAMFileReader(new File(inFile));
 		reader.setValidationStringency(ValidationStringency.SILENT);
@@ -135,34 +142,43 @@ public class VdjReadExtractor3 {
 		System.out.println("Retrieving constant reads.");
 		getReads(constantRegionFile, reader, secondaryReads, secondaryReads);
 		
+		System.out.println("reads size: " + reads.size());
+		System.out.println("secondary reads size: " + secondaryReads.size());
+		
 		// Variable reads always go to primary read set
 		System.out.println("Retrieving variable reads");
 		getReads(vdjRegionFile, reader, reads, reads);
+		
+		System.out.println("reads size: " + reads.size());
+		System.out.println("secondary reads size: " + secondaryReads.size());
 		
 		// Unampped reads can go to either read set depending upon content
 		System.out.println("Retrieving unmapped reads");
 		getReads("unmapped", reader, reads, secondaryReads);
 		
+		System.out.println("reads size: " + reads.size());
+		System.out.println("secondary reads size: " + secondaryReads.size());
+		
 		System.out.println("Looping over all reads...");
 
 		for (SAMRecord read : reader) {
 			
-			if (secondaryReads.contains(read.getReadName())) {
-				String id = read.getReadName() + "___" + (read.getFirstOfPairFlag() ? "1" : "2");
-				
-				if (!readIds.contains(id)) {
-					readIds.add(id);
-					numReads += 1;
-					output(read, constantWriter);
-				}
-			}
-			else if (reads.contains(read.getReadName())) {
+			
+			if (reads.contains(read.getReadName())) {
 				String id = read.getReadName() + "___" + (read.getFirstOfPairFlag() ? "1" : "2");
 				
 				if (!readIds.contains(id)) {
 					readIds.add(id);
 					numReads += 1;
 					output(read, writer);
+				}
+			} else if (secondaryReads.contains(read.getReadName())) {
+				String id = read.getReadName() + "___" + (read.getFirstOfPairFlag() ? "1" : "2");
+				
+				if (!readIds.contains(id)) {
+					readIds.add(id);
+					numReads += 1;
+					output(read, constantWriter);
 				}
 			}
 		}
