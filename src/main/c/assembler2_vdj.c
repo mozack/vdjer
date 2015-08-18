@@ -1139,12 +1139,10 @@ int build_contigs(
 
 	int status = OK;
 	stack<contig*> contigs;
-//	stack<contig*> contigs_to_output;
 	stack<contig*> popped_contigs;
 	struct contig* root_contig = new_contig();
 	root_contig->curr_node = root;
 	contigs.push(root_contig);
-//	vector<char*> all_contig_fragments;
 
 	int MAX_FRAGMENTS_PER_THREAD = 10000000;
 	int num_fragments = 0;
@@ -1158,21 +1156,6 @@ int build_contigs(
 		// Get contig from stack
 		struct contig* contig = contigs.top();
 
-//		printf ("contig: %x\n");
-//		fflush(stdout);
-//		printf("node: %x\n", contig->curr_node);
-//		printf("kmer: %s\n", contig->curr_node->kmer);
-//		fflush(stdout);
-/*
-		if (contig->curr_node != NULL && contig->curr_node->kmer != NULL && strncmp(contig->curr_node->kmer, SINK, kmer_size) == 0) {
-			all_contigs_len += strlen(contig->seq) + 100;
-			memcpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
-			output_contig(contig, contig_count, prefix, contig_str);
-			free_contig(contig);
-			contigs.pop();
-		}
-		else
-*/
 		if (is_node_visited(contig, contig->curr_node)) {
 			printf("Repeat node: ");
 			print_kmer(contig->curr_node);
@@ -1182,7 +1165,6 @@ int build_contigs(
 			if ((!shadow_mode) && (!stop_on_repeat)) {
 				// Add length of contig + padding for prefix
 				all_contigs_len += strlen(contig->seq) + 100;
-//				contigs_to_output.push(contig);
 
 				output_contig(contig, contig_count, prefix, contig_str);
 				free_contig(contig);
@@ -1195,7 +1177,6 @@ int build_contigs(
 			}
 		}
 		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size-1)) {
-//		else if (contig->curr_node->toNodes == NULL) {
 			// We've reached the end of the contig.
 			// Append entire current node.
 			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
@@ -1203,7 +1184,6 @@ int build_contigs(
 			// Now, write the contig
 			if (!shadow_mode) {
 				all_contigs_len += strlen(contig->seq) + 100;
-//				contigs_to_output.push(contig);
 				// only output at sink node
 				output_contig(contig, contig_count, prefix, contig_str);
 				free_contig(contig);
@@ -1211,42 +1191,13 @@ int build_contigs(
 				popped_contigs.push(contig);
 			}
 			contigs.pop();
-//			free_contig(contig);
 		}
 		else {
 			// Append first base from current node
 			contig->seq[contig->size++] = contig->curr_node->kmer[0];
 			contig->real_size += 1;
-			if (contig->size >= MAX_CONTIG_SIZE) {
-				char kmer[1024];
-				memset(kmer, 0, 1024);
-				strncpy(kmer, contig->curr_node->kmer, kmer_size);
-				printf("Max contig size exceeded at node: %s\n", kmer);
-
-				//TODO: Provide different status
-				status = TOO_MANY_CONTIGS;
-				break;
-			}
 
 			contig->visited_nodes->insert(contig->curr_node->kmer);
-
-			//			struct linked_node* selected_to_node = NULL;
-			//			int max_freq = -1;
-			//
-			//			while (to_linked_node != NULL) {
-			//
-			//				struct node* to_node = to_linked_node->node;
-			//				if (to_node->frequency > max_freq) {
-			//					max_freq = to_node->frequency;
-			//					selected_to_node = to_linked_node;
-			//				}
-			//
-			//				to_linked_node = to_linked_node->next;
-			//			}
-			//
-			//			contig->curr_node = selected_to_node->node;
-			//			paths_from_root++;
-
 
 			// Count total edges
 			int total_edge_count = 0;
@@ -1288,27 +1239,7 @@ int build_contigs(
 			status = TOO_MANY_PATHS_FROM_ROOT;
 		}
 	}
-/*
-	if (status == OK) {
 
-		while (contigs_to_output.size() > 0) {
-			struct contig* contig = contigs_to_output.top();
-			output_contig(contig, contig_count, prefix, contig_str);
-
-			contigs_to_output.pop();
-			free_contig(contig);
-		}
-	}
-
-
-	// Cleanup stranded contigs in case processing stopped.
-	while (contigs_to_output.size() > 0) {
-		struct contig* contig = contigs_to_output.top();
-
-		contigs_to_output.pop();
-		free_contig(contig);
-	}
-*/
 	while (contigs.size() > 0) {
 		struct contig* contig = contigs.top();
 		contigs.pop();
@@ -1321,17 +1252,11 @@ int build_contigs(
 		free_contig(contig);
 	}
 
-	printf("Freeing %d fragments\n", num_fragments);
 	for (int i=0; i<num_fragments; i++) {
 		free(all_contig_fragments[i]);
 	}
 
 	free(all_contig_fragments);
-
-	// Cleanup contig fragments
-//	for (vector<char*>::iterator it = all_contig_fragments.begin(); it != all_contig_fragments.end(); ++it) {
-//		free(*it);
-//	}
 
 	return status;
 }
