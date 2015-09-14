@@ -29,3 +29,6 @@ vjf:
 
 quickmap:
 	g++ -g -I$(SRCDIR) $(SRCDIR)/quick_map2.c -o quickmap
+
+findcdr3:
+	g++ -g -I$(SRCDIR) $(SRCDIR)/cdr3_win.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c -o findcdr3
