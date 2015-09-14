@@ -300,11 +300,6 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 
 			if (window >= MIN_WINDOW && window <= MAX_WINDOW+pad && strlen(contig) > window) {
 				find_conserved_aminos(*v, *j, contig, cdr3_seq, cdr3_block);
-				// We've found a potential match
-//				char win[256];
-//				memset(win, 0, 256);
-//				strncpy(win, contig+*v, window);
-//				printf("%s\n", win);
 			}
 		}
 	}
@@ -323,21 +318,7 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 
 				int vpad = WINDOW_SPAN - (window + J_EXTENSION);
 
-//				int pad = WINDOW_SPAN - window;
-//				int vpad = pad / 2;
-//				if (vpad % 3 == 1) {
-//					vpad += 2;
-//				} else if (vpad % 3 == 2) {
-//					vpad += 1;
-//				}
 				start -= vpad;
-
-				/*
-				int pad = MAX_WINDOW - window;
-				int vpad = pad / 2;
-				vpad -= vpad % 3;
-				start -= vpad;
-				*/
 
 				if (strlen(start) > WINDOW_SPAN) {
 					char win[1024];
