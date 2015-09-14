@@ -223,22 +223,11 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 				strncpy(cdr3, contig+*v, window);
 				cdr3_seq.insert(cdr3);
 				cdr3 += 1024;
-/*
 
-				int pad = MAX_WINDOW - window;
-				int vpad = pad / 2;
-				vpad -= vpad % 3;
-				int start = *v - vpad;
-
-				if (strlen(contig) > start+MAX_WINDOW) {
-					char win[256];
-					memset(win, 0, 256);
-					strncpy(win, contig+start, MAX_WINDOW);
-					printf("%s\n", win);
-				}
-*/
+//				if (PRINT_CDR3_INDEX) {
+					printf("%s\t%s\t%d\t%d\n", contig, cdr3, *j, *v);
+//				}
 			}
-
 		}
 	}
 }
