@@ -16,12 +16,16 @@
 #include <stdexcept>
 //#include "abra_NativeAssembler.h"
 #include "seq_score.h"
+#include "hash_utils.h"
 #include "vj_filter.h"
 
 using namespace std;
 using google::sparse_hash_map;
 using google::sparse_hash_set;
 using google::dense_hash_set;
+
+extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
+		char*& primary_buf, char*& secondary_buf);
 
 //#define READ_LENGTH 100
 //#define KMER 63
@@ -105,22 +109,7 @@ float MIN_CONTIG_SCORE;
 
 
 
-struct eqstr
-{
-  bool operator()(const char* s1, const char* s2) const
-  {
-    return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, kmer_size) == 0);
-  }
-};
 
-struct my_hash
-{
-	uint64_t operator()(const char* kmer) const
-	{
-		return MurmurHash64A(kmer, kmer_size, 97);
-		//return chunk;
-	}
-};
 
 struct struct_pool {
 	struct node_pool* node_pool;
@@ -1970,6 +1959,9 @@ int main(int argc, char* argv[]) {
 	char vjf_j_conserved = argv[13][0];
 	int vjf_window_span = atoi(argv[14]);
 	int vjf_j_extension = atoi(argv[15]);
+	char* vdj_fasta = argv[16];
+	char* v_region = argv[17];
+	char* c_region = argv[18];
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
@@ -1986,12 +1978,18 @@ int main(int argc, char* argv[]) {
 //	char* input = load_file("/home/lmose/dev/vdj/viz/test2.reads");
 
 //	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/mouse/test1/pass2/rna.vdj.reads");
-	char* input = load_file(input_file);
-	char* unaligned_input = NULL;
 
-	if (unaligned_input_file != NULL) {
-		unaligned_input = load_file(unaligned_input_file);
-	}
+	char* bam_file = input_file;
+	char* input = NULL;
+	char* unaligned_input = NULL;
+	extract(bam_file, vdj_fasta, v_region, c_region, input, unaligned_input);
+
+//	char* input = load_file(input_file);
+//	char* unaligned_input = NULL;
+//
+//	if (unaligned_input_file != NULL) {
+//		unaligned_input = load_file(unaligned_input_file);
+//	}
 
 	char* bcr_fasta = "/datastore/nextgenout4/seqware-analysis/lmose/vdj/mouse/mm10.bcr.constant.fa";
 

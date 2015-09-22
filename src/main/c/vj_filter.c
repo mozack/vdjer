@@ -7,6 +7,7 @@
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
 #include <sparsehash/dense_hash_set>
+#include "hash_utils.h"
 #include "vj_filter.h"
 
 using namespace std;
@@ -33,49 +34,7 @@ int J_EXTENSION;
 
 pthread_mutex_t vjf_mutex;
 
-uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
-{
-  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
-  const int r = 47;
-
-  uint64_t h = seed ^ (len * m);
-
-  const uint64_t * data = (const uint64_t *)key;
-  const uint64_t * end = data + (len/8);
-
-  while(data != end)
-  {
-    uint64_t k = *data++;
-
-    k *= m;
-    k ^= k >> r;
-    k *= m;
-
-    h ^= k;
-    h *= m;
-  }
-
-  const unsigned char * data2 = (const unsigned char*)data;
-
-  switch(len & 7)
-  {
-  case 7: h ^= uint64_t(data2[6]) << 48;
-  case 6: h ^= uint64_t(data2[5]) << 40;
-  case 5: h ^= uint64_t(data2[4]) << 32;
-  case 4: h ^= uint64_t(data2[3]) << 24;
-  case 3: h ^= uint64_t(data2[2]) << 16;
-  case 2: h ^= uint64_t(data2[1]) << 8;
-  case 1: h ^= uint64_t(data2[0]);
-          h *= m;
-  };
-
-  h ^= h >> r;
-  h *= m;
-  h ^= h >> r;
-
-  return h;
-}
-
+uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed );
 
 struct eqkmer
 {
@@ -221,12 +180,15 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW && *j >= *v) {
 
 				strncpy(cdr3, contig+*v, window);
-				cdr3_seq.insert(cdr3);
-				cdr3 += 1024;
 
 //				if (PRINT_CDR3_INDEX) {
-					printf("%s\t%s\t%d\t%d\n", contig, cdr3, *j, *v);
+//					fprintf(stderr, "contig: [%s]\t cdr3: [%s]\tV: [%d]\tJ: [%d]\n", contig, cdr3, *v, *j);
+//					fprintf(stderr, "contig: [%s]\tV: [%d]\tJ: [%d]\n", contig, *v, *j);
+//					printf("%s\t%s\t%d\t%d\n", contig, cdr3, *v, *j);
 //				}
+
+				cdr3_seq.insert(cdr3);
+				cdr3 += 1024;
 			}
 		}
 	}
@@ -429,4 +391,5 @@ int main(int argc, char** argv) {
 	find_candidates(v_file, j_file, contig_file, max_dist);
 }
 */
+
 
