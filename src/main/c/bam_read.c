@@ -198,6 +198,7 @@ void load_kmers(char* vdj_fasta) {
 }
 
 void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len) {
+
 	char seq[256];
 	char quals[256];
 	char rc_seq[256];
@@ -205,17 +206,20 @@ void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len) {
 
 	bam_get_seq_str(b, seq);
 	bam_get_qual_str(b, quals);
+
 	buf_ptr[0] = '0';
 	buf_ptr += 1;
 	strncpy(buf_ptr, seq, read_len);
 	buf_ptr += read_len;
 	strncpy(buf_ptr, quals, read_len);
 	buf_ptr += read_len;
-	buf_ptr[0] = '\0';
+
+	buf_ptr[0] = '0';
 	buf_ptr += 1;
 	rc(seq, rc_seq);
 	strncpy(buf_ptr, rc_seq, read_len);
 	buf_ptr += read_len;
+
 	reverse(quals, r_quals);
 	strncpy(buf_ptr, r_quals, read_len);
 	buf_ptr += read_len;
@@ -271,7 +275,6 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	}
 
 	hts_itr_destroy(iter2);
-
 	int read_len = 0;
 
 	// Process unmapped reads
@@ -302,10 +305,13 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		}
 	}
 
-	// Allocate room for strand flag * 2, seq * 2, quals * 2 (Forward / Rev complement)
-	primary_buf = (char*) calloc(primary_reads.size() * (read_len*4 + 2) + 1, sizeof(char));
+	bam_destroy1(b);
+	bam_close(&bam);
+
+	// Allocate room for strand flag * 2, seq * 2, quals * 2 (Forward / Rev complement), (1st in pair, 2nd in pair)
+	primary_buf = (char*) calloc(primary_reads.size() * (read_len*8 + 4) + 1, sizeof(char));
 	char* primary_buf_ptr = primary_buf;
-	secondary_buf = (char*) calloc(secondary_reads.size() * (read_len*4 + 2) + 1, sizeof(char));
+	secondary_buf = (char*) calloc(secondary_reads.size() * (read_len*8 + 4) + 1, sizeof(char));
 	char* secondary_buf_ptr = secondary_buf;
 
 	dense_hash_set<const char*, vjf_hash, vjf_eqstr> primary_output1;
@@ -314,9 +320,19 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	dense_hash_set<const char*, vjf_hash, vjf_eqstr> secondary_output1;
 	dense_hash_set<const char*, vjf_hash, vjf_eqstr> secondary_output2;
 
+	primary_output1.set_empty_key(NULL);
+	primary_output2.set_empty_key(NULL);
+	secondary_output1.set_empty_key(NULL);
+	secondary_output2.set_empty_key(NULL);
+
 	char quals[256];
 	char rc_seq[256];
 	char rc_quals[256];
+
+	// Reinitialize bam file and start over from beginning...
+    bam_open(bam_file, &bam);
+    b = bam_init1();
+
 	while ((r = sam_read1(bam.in, bam.header, b)) >= 0) {
 		if (!(b->core.flag & 0x900)) {
 			char* qname = bam_get_qname(b);
@@ -330,7 +346,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 					char* qname_str = get_str(primary_reads, qname);
 					primary_output2.insert(qname_str);
 				}
-			} else {
+			} else if (contains_str(secondary_reads, qname)) {
 				if ((b->core.flag & 0x40)  && !contains_str(secondary_output1, qname)) {
 					add_to_buffer(b, secondary_buf_ptr, read_len);
 					char* qname_str = get_str(secondary_reads, qname);
@@ -346,7 +362,6 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 
 //	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=primary_reads.begin(); it!=primary_reads.end(); it++) {
 //		printf("qname1: %s\n", *it);
-//		if
 //	}
 //
 //	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=secondary_reads.begin(); it!=secondary_reads.end(); it++) {
@@ -357,6 +372,15 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	bam_close(&bam);
 
 	kmer_size = orig_kmer_size;
+
+//	printf("primary_buf: %s\n", primary_buf);
+
+	free(extract_vdj_kmers_buf);
+	free(read_name_buf);
+
+//	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=primary_reads.begin(); it!=primary_reads.end(); it++) {
+//		free((void*) *it);
+//	}
 }
 
 /*
@@ -381,6 +405,9 @@ int main(int argc,char** argv)
 	char* p2;
 
 	extract(bam_file, vdj_fasta, v_region, c_region, p1, p2);
+
+	printf("strlen(p1): [%d]\n", strlen(p1));
+	printf("strlen(p2): [%d]\n", strlen(p2));
 }
 */
 
