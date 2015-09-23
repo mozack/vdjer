@@ -230,10 +230,12 @@ void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len, char read_num, char*
 	buf_ptr += 1;
 	rc(seq, rc_seq);
 	strncpy(buf_ptr, rc_seq, read_len);
+	seq_ptr = buf_ptr;
 	buf_ptr += read_len;
 
 	reverse(quals, r_quals);
 	strncpy(buf_ptr, r_quals, read_len);
+	quals_ptr = buf_ptr;
 	buf_ptr += read_len;
 
 	add_read_info(read_id, seq_ptr, quals_ptr, read_num, !bam_is_rev(b));
