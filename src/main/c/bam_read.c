@@ -13,8 +13,8 @@
 
 using google::dense_hash_set;
 
-extern int kmer_size;
-//int kmer_size=25;
+//extern int kmer_size;
+int kmer_size=25;
 int EXTRACT_KMER_SIZE = 15;
 
 struct bam_info {
@@ -308,7 +308,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	bam_destroy1(b);
 	bam_close(&bam);
 
-	// Allocate room for strand flag * 2, seq * 2, quals * 2 (Forward / Rev complement), (1st in pair, 2nd in pair)
+	// Allocate room for strand flag * 2, seq * 2, quals * 2 (Forward / Rev complement), pair * 2 (1st in pair, 2nd in pair)
 	primary_buf = (char*) calloc(primary_reads.size() * (read_len*8 + 4) + 1, sizeof(char));
 	char* primary_buf_ptr = primary_buf;
 	secondary_buf = (char*) calloc(secondary_reads.size() * (read_len*8 + 4) + 1, sizeof(char));
@@ -338,6 +338,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 			char* qname = bam_get_qname(b);
 			if (contains_str(primary_reads, qname)) {
 				if ((b->core.flag & 0x40)  && !contains_str(primary_output1, qname)) {
+					printf("po1: %s\n", qname);
 					add_to_buffer(b, primary_buf_ptr, read_len);
 					char* qname_str = get_str(primary_reads, qname);
 					primary_output1.insert(qname_str);
@@ -383,7 +384,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 //	}
 }
 
-/*
+
 int main(int argc,char** argv)
 {
 //	if(argc!=3) return -1;
@@ -409,5 +410,5 @@ int main(int argc,char** argv)
 	printf("strlen(p1): [%d]\n", strlen(p1));
 	printf("strlen(p2): [%d]\n", strlen(p2));
 }
-*/
+
 
