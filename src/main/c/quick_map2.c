@@ -276,8 +276,6 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	int flag1 = 0x1l | 0x2 |  (r1->info->is_rc ? 0x10 : 0x20) | 0x40;
 	int flag2 = 0x1l | 0x2 |  (r2->info->is_rc ? 0x10 : 0x20) | 0x80;
 
-	char* quals = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
-
 	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
 	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, r1->info->seq, r1->info->quals);
 	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, r2->info->seq, r2->info->quals);
