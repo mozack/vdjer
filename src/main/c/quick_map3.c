@@ -17,8 +17,8 @@ using google::sparse_hash_map;
 
 //TODO: Do not hardcode
 int READ_LEN = 50;
-int MIN_INSERT = 175;
-int MAX_INSERT = 175;
+int MIN_INSERT = 50;
+int MAX_INSERT = 400;
 
 //
 // String comparison bounded at READ_LEN
@@ -279,6 +279,10 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	char quals[256];
 
 	const char* format = "MAPPING:%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
+
+	// Only need to add null terminators once.
+	seq[READ_LEN] = '\0';
+	quals[READ_LEN] = '\0';
 
 	strncpy(seq, r1->info->seq, READ_LEN);
 	strncpy(quals, r1->info->quals, READ_LEN);
