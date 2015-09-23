@@ -392,7 +392,9 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 //	printf("primary_buf: %s\n", primary_buf);
 
 	free(extract_vdj_kmers_buf);
-	free(read_name_buf);
+
+	// Do not free read name buf, it is needed downstream.
+//	free(read_name_buf);
 
 //	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=primary_reads.begin(); it!=primary_reads.end(); it++) {
 //		free((void*) *it);
