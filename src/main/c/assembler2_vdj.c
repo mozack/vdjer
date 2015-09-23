@@ -27,6 +27,9 @@ using google::dense_hash_set;
 extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char*& primary_buf, char*& secondary_buf);
 
+// quick_map3.c
+extern void quick_map_process_contig(char* contig_id, char* contig);
+
 //#define READ_LENGTH 100
 //#define KMER 63
 //#define MIN_CONTIG_LENGTH 101
@@ -1071,6 +1074,13 @@ int get_contig_len(struct contig* contig) {
 
 int output_contigs = 0;
 
+char contains_seq(dense_hash_set<const char*, vjf_hash, vjf_eqstr>& seq_set, char* seq) {
+	dense_hash_set<const char*, vjf_hash, vjf_eqstr>::const_iterator it = seq_set.find(seq);
+	return it != seq_set.end();
+}
+
+int contig_num = 1;
+
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
 
 	if (contig->real_size >= MIN_CONTIG_SIZE) {
@@ -1094,7 +1104,29 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			strcat(buf, contig->seq);
 		}
 
-		vjf_search(buf, vjf_windows);
+		// Search for V / J anchors and add to hash set.
+		dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
+		vjf_search(buf, vjf_windows_temp);
+
+		for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows_temp.begin(); it!=vjf_windows_temp.end(); it++) {
+			char is_to_be_processed = 0;
+			char contig_id[256];
+
+			pthread_mutex_lock(&contig_writer_mutex);
+			if (!contains_seq(vjf_windows, (char*) *it)) {
+				vjf_windows.insert(*it);
+				is_to_be_processed = 1;
+				sprintf(contig_id, "vjf_%d", contig_num++);
+				fprintf(stderr, ">%s\n%s\n", contig_id, *it);
+			}
+			pthread_mutex_unlock(&contig_writer_mutex);
+
+			if (is_to_be_processed) {
+				char contig_id[256];
+				// TODO: Grab output instead of writing directly to stdout/stderr
+				quick_map_process_contig(contig_id, (char*) *it);
+			}
+		}
 
 //		pthread_mutex_lock(&contig_writer_mutex);
 //		fprintf(stderr, buf);

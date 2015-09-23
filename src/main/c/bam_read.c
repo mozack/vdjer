@@ -13,8 +13,12 @@
 
 using google::dense_hash_set;
 
-//extern int kmer_size;
-int kmer_size=25;
+// quick_map3.c
+extern void quick_map_init();
+extern void add_read_info(char* read_id, char* seq, char* quals, char read_num, char is_rc);
+
+extern int kmer_size;
+//int kmer_size=25;
 int EXTRACT_KMER_SIZE = 15;
 
 struct bam_info {
@@ -197,12 +201,15 @@ void load_kmers(char* vdj_fasta) {
 	}
 }
 
-void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len) {
+void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len, char read_num, char* read_id) {
 
 	char seq[256];
 	char quals[256];
 	char rc_seq[256];
 	char r_quals[256];
+
+	char* seq_ptr;
+	char* quals_ptr;
 
 	bam_get_seq_str(b, seq);
 	bam_get_qual_str(b, quals);
@@ -210,10 +217,15 @@ void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len) {
 	buf_ptr[0] = '0';
 	buf_ptr += 1;
 	strncpy(buf_ptr, seq, read_len);
+	seq_ptr = buf_ptr;
 	buf_ptr += read_len;
 	strncpy(buf_ptr, quals, read_len);
+	quals_ptr = buf_ptr;
 	buf_ptr += read_len;
 
+	add_read_info(read_id, seq_ptr, quals_ptr, read_num, bam_is_rev(b));
+
+	// Now add the reverse alignment
 	buf_ptr[0] = '0';
 	buf_ptr += 1;
 	rc(seq, rc_seq);
@@ -223,10 +235,14 @@ void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len) {
 	reverse(quals, r_quals);
 	strncpy(buf_ptr, r_quals, read_len);
 	buf_ptr += read_len;
+
+	add_read_info(read_id, seq_ptr, quals_ptr, read_num, !bam_is_rev(b));
 }
 
 void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char*& primary_buf, char*& secondary_buf) {
+
+	quick_map_init();
 
 	int orig_kmer_size =  kmer_size;
 	kmer_size = EXTRACT_KMER_SIZE;
@@ -338,23 +354,22 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 			char* qname = bam_get_qname(b);
 			if (contains_str(primary_reads, qname)) {
 				if ((b->core.flag & 0x40)  && !contains_str(primary_output1, qname)) {
-					printf("po1: %s\n", qname);
-					add_to_buffer(b, primary_buf_ptr, read_len);
 					char* qname_str = get_str(primary_reads, qname);
+					add_to_buffer(b, primary_buf_ptr, read_len, 1, qname_str);
 					primary_output1.insert(qname_str);
 				} else if ((b->core.flag & 0x80)  && !contains_str(primary_output2, qname)) {
-					add_to_buffer(b, primary_buf_ptr, read_len);
 					char* qname_str = get_str(primary_reads, qname);
+					add_to_buffer(b, primary_buf_ptr, read_len, 2, qname_str);
 					primary_output2.insert(qname_str);
 				}
 			} else if (contains_str(secondary_reads, qname)) {
 				if ((b->core.flag & 0x40)  && !contains_str(secondary_output1, qname)) {
-					add_to_buffer(b, secondary_buf_ptr, read_len);
 					char* qname_str = get_str(secondary_reads, qname);
+					add_to_buffer(b, secondary_buf_ptr, read_len, 1, qname_str);
 					secondary_output1.insert(qname_str);
 				} else if ((b->core.flag & 0x80)  && !contains_str(secondary_output2, qname)) {
-					add_to_buffer(b, secondary_buf_ptr, read_len);
 					char* qname_str = get_str(secondary_reads, qname);
+					add_to_buffer(b, secondary_buf_ptr, read_len, 2, qname_str);
 					secondary_output2.insert(qname_str);
 				}
 			}
@@ -384,7 +399,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 //	}
 }
 
-
+/*
 int main(int argc,char** argv)
 {
 //	if(argc!=3) return -1;
@@ -410,5 +425,5 @@ int main(int argc,char** argv)
 	printf("strlen(p1): [%d]\n", strlen(p1));
 	printf("strlen(p2): [%d]\n", strlen(p2));
 }
-
+*/
 
