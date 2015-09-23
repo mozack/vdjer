@@ -1106,6 +1106,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 		// Search for V / J anchors and add to hash set.
 		dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
+		vjf_windows_temp.set_empty_key(NULL);
 		vjf_search(buf, vjf_windows_temp);
 
 		for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows_temp.begin(); it!=vjf_windows_temp.end(); it++) {
