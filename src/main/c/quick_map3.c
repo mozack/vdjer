@@ -280,12 +280,12 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
 	const char* format = "MAPPING:%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
 
-	strncpy(seq, r1->info->seq, READ_LENGTH);
-	strncpy(quals, r1->info->quals, READ_LENGTH);
+	strncpy(seq, r1->info->seq, READ_LEN);
+	strncpy(quals, r1->info->quals, READ_LEN);
 	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, seq, quals);
 
-	strncpy(seq, r2->info->seq, READ_LENGTH);
-	strncpy(quals, r2->info->quals, READ_LENGTH);
+	strncpy(seq, r2->info->seq, READ_LEN);
+	strncpy(quals, r2->info->quals, READ_LEN);
 	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
 }
 
