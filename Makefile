@@ -9,7 +9,7 @@ samtools:
 	$(MAKE) -C $(SAMTOOLS)
 
 vdj:	samtools
-	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I$(SAMTOOLS) -I$(HTSLIB)  $(SRCDIR)/assembler2_vdj.c $(SRCDIR)/seq_score.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c $(SRCDIR)/hash_utils.c $(SRCDIR)/bam_read.c  $(SAMTOOLS)/libbam.a $(HTSLIB)/libhts.a -lz -lpthread -o vdj
+	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I$(SAMTOOLS) -I$(HTSLIB)  $(SRCDIR)/assembler2_vdj.c $(SRCDIR)/seq_score.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c $(SRCDIR)/hash_utils.c $(SRCDIR)/bam_read.c $(SRCDIR)/quick_map3.c  $(SAMTOOLS)/libbam.a $(HTSLIB)/libhts.a -lz -lpthread -o vdj
 
 vdjg:
 	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $(SRCDIR)/assembler2_vdj_greedy.c $(SRCDIR)/seq_score.c -o vdjg
@@ -33,10 +33,10 @@ vjf:
 	g++ -g -I$(SRCDIR) $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c $(SRCDIR)/hash_utils.c -o vjf
 
 quickmap:
-	g++ -g -I$(SRCDIR) $(SRCDIR)/quick_map2.c -o quickmap
+	g++ -g -I$(SRCDIR) $(SRCDIR)/quick_map2.c $(SRCDIR)/hash_utils.c -o quickmap
 
 findcdr3:
 	g++ -g -I$(SRCDIR) $(SRCDIR)/cdr3_win.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c -o findcdr3
 
 bamr:
-	g++ -g -I$(SRCDIR) -I$(SAMTOOLS) -I$(HTSLIB) $(SRCDIR)/bam_read.c $(SRCDIR)/hash_utils.c $(SAMTOOLS)/libbam.a $(HTSLIB)/libhts.a -lz -lpthread -o bamr
+	g++ -g -I$(SRCDIR) -I$(SAMTOOLS) -I$(HTSLIB) $(SRCDIR)/bam_read.c $(SRCDIR)/hash_utils.c $(SRCDIR)/quick_map3.c $(SAMTOOLS)/libbam.a $(HTSLIB)/libhts.a -lz -lpthread -o bamr
