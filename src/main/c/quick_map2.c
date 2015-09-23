@@ -5,54 +5,11 @@
 
 #include <sparsehash/sparse_hash_map>
 
+#include "hash_utils.h"
+
 using namespace std;
 
 using google::sparse_hash_map;
-
-#define BIG_CONSTANT(x) (x##LLU)
-
-uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
-{
-  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
-  const int r = 47;
-
-  uint64_t h = seed ^ (len * m);
-
-  const uint64_t * data = (const uint64_t *)key;
-  const uint64_t * end = data + (len/8);
-
-  while(data != end)
-  {
-    uint64_t k = *data++;
-
-    k *= m;
-    k ^= k >> r;
-    k *= m;
-
-    h ^= k;
-    h *= m;
-  }
-
-  const unsigned char * data2 = (const unsigned char*)data;
-
-  switch(len & 7)
-  {
-  case 7: h ^= uint64_t(data2[6]) << 48;
-  case 6: h ^= uint64_t(data2[5]) << 40;
-  case 5: h ^= uint64_t(data2[4]) << 32;
-  case 4: h ^= uint64_t(data2[3]) << 24;
-  case 3: h ^= uint64_t(data2[2]) << 16;
-  case 2: h ^= uint64_t(data2[1]) << 8;
-  case 1: h ^= uint64_t(data2[0]);
-          h *= m;
-  };
-
-  h ^= h >> r;
-  h *= m;
-  h ^= h >> r;
-
-  return h;
-}
 
 //int READ_LEN = 50;
 //int MIN_INSERT = 180 - 60; // 120
@@ -64,7 +21,7 @@ int MAX_INSERT;
 
 //
 // String comparison bounded at READ_LEN
-struct eqstr
+struct qm_eqstr
 {
   bool operator()(const char* s1, const char* s2) const
   {
@@ -74,31 +31,11 @@ struct eqstr
 
 //
 // String hash bounded at READ_LEN
-struct my_hash
+struct qm_hash
 {
 	uint64_t operator()(const char* seq) const
 	{
 		return MurmurHash64A(seq, READ_LEN, 97);
-	}
-};
-
-//
-// String comparison based upon strlen
-struct eqstr2
-{
-  bool operator()(const char* s1, const char* s2) const
-  {
-    return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
-  }
-};
-
-//
-// String hash based upon strlen
-struct my_hash2
-{
-	uint64_t operator()(const char* seq) const
-	{
-		return MurmurHash64A(seq, strlen(seq), 97);
 	}
 };
 
@@ -128,7 +65,7 @@ char* qual_buf_start;
 
 //
 // Key = read sequence, Value = vector of read_info
-sparse_hash_map<const char*, struct read_vec*, my_hash, eqstr>* reads = new sparse_hash_map<const char*, struct read_vec*, my_hash, eqstr>();
+sparse_hash_map<const char*, struct read_vec*, qm_hash, qm_eqstr>* reads = new sparse_hash_map<const char*, struct read_vec*, qm_hash, qm_eqstr>();
 
 void advance_read_buf() {
 	// Advance read buffer to next open slot (TODO: Better to stay on word boundary?)
@@ -352,7 +289,7 @@ void process_contig(char* contig_id, char* contig) {
 	int MAX_READ_PAIRS = 1000000;
 	map_info** read1 = (map_info**) calloc(MAX_READ_PAIRS, sizeof(map_info*));
 
-	sparse_hash_map<const char*, struct map_info*, my_hash2, eqstr2> read2;
+	sparse_hash_map<const char*, struct map_info*, vjf_hash, vjf_eqstr> read2;
 
 	// Load read 1 matches into vector
 	// Load read 2 matches into map
@@ -403,7 +340,7 @@ void process_contig(char* contig_id, char* contig) {
 
 	free(read1);
 
-	for (sparse_hash_map<const char*, struct map_info*, my_hash2, eqstr2>::const_iterator it = read2.begin();
+	for (sparse_hash_map<const char*, struct map_info*, vjf_hash, vjf_eqstr>::const_iterator it = read2.begin();
 			it != read2.end(); ++it) {
 
 		map_info* m_info = it->second;
