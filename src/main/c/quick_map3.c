@@ -15,9 +15,10 @@ using google::sparse_hash_map;
 //int MIN_INSERT = 180 - 60; // 120
 //int MAX_INSERT = 180 + 60; // 240
 
-int READ_LEN;
-int MIN_INSERT;
-int MAX_INSERT;
+//TODO: Do not hardcode
+int READ_LEN = 50;
+int MIN_INSERT = 175;
+int MAX_INSERT = 175;
 
 //
 // String comparison bounded at READ_LEN
