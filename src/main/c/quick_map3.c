@@ -300,10 +300,10 @@ void quick_map_process_contig(char* contig_id, char* contig) {
 				m_info->pos = i + 1;
 
 				if (r_info->read_num == 1) {
-//					printf("Adding R1: %s\n", r_info->id);
+					printf("Adding R1: %s\n", r_info->id);
 					read1[read1_count++] = m_info;
 				} else {
-//					printf("Adding R2: %s\n", r_info->id);
+					printf("Adding R2: %s\n", r_info->id);
 					// TODO: Handle read 2 multi-mappers
 					read2[r_info->id] = m_info;
 				}
