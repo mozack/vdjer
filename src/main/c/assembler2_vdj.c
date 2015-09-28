@@ -1856,8 +1856,8 @@ char* assemble(const char* input,
 	pthread_mutex_destroy(&marker_trackback_mutex);
 
 	// Write windows to disk
-	printf("Writing windows to disk\n");
-	output_windows();
+//	printf("Writing windows to disk\n");
+//	output_windows();
 
 //	printf("output contigs: %d\n", output_contigs);
 
