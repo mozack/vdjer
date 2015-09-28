@@ -1123,7 +1123,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 			if (is_to_be_processed) {
 				// TODO: Grab output instead of writing directly to stdout/stderr
-				quick_map_process_contig(contig_id, (char*) *it);
+//				quick_map_process_contig(contig_id, (char*) *it);
 			}
 			pthread_mutex_unlock(&contig_writer_mutex);
 		}
