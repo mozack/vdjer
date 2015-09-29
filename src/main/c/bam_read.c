@@ -271,6 +271,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char* qname = bam_get_qname(b);
 
 		if (!contains_str(primary_reads, qname)) {
+			printf("Adding qname: [%s]\n", qname);
 			strncpy(read_name_buf_ptr, qname, strlen(qname));
 			primary_reads.insert(read_name_buf_ptr);
 			read_name_buf_ptr += strlen(qname)+1;
@@ -278,6 +279,8 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	}
 
 	hts_itr_destroy(iter);
+
+	printf("primary_reads size: [%d]\n", primary_reads.size());
 
 	// Cache constant read names
 	hts_itr_t *iter2 = sam_itr_querys(bam.idx, bam.header, c_region);

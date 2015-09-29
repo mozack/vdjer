@@ -18,25 +18,23 @@
 #include "seq_score.h"
 #include "hash_utils.h"
 #include "vj_filter.h"
+#include "quick_map3.h"
 
 using namespace std;
 using google::sparse_hash_map;
 using google::sparse_hash_set;
 using google::dense_hash_set;
 
+// bam_read.c
 extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char*& primary_buf, char*& secondary_buf);
 
+// coverage.c
+extern char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
+		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads);
+
 // quick_map3.c
-extern void quick_map_process_contig(char* contig_id, char* contig);
-
-//#define READ_LENGTH 100
-//#define KMER 63
-//#define MIN_CONTIG_LENGTH 101
-//#define MIN_NODE_FREQUENCY 3
-//#define MIN_NODE_FREQUENCY 2
-//#define MAX_CONTIG_SIZE 10000
-
+extern void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads);
 
 #define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
@@ -1113,19 +1111,37 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			char is_to_be_processed = 0;
 			char contig_id[256];
 
+			// TODO: Track all contigs to avoid mapping to filtered contigs more than once.
+			// TODO: Use RW lock here?
+
 			pthread_mutex_lock(&contig_writer_mutex);
 			if (!contains_seq(vjf_windows, (char*) *it)) {
-				vjf_windows.insert(*it);
 				is_to_be_processed = 1;
-				sprintf(contig_id, "vjf_%d", contig_num++);
-				fprintf(stderr, ">%s\n%s\n", contig_id, *it);
-			}
-
-			if (is_to_be_processed) {
-				// TODO: Grab output instead of writing directly to stdout/stderr
-//				quick_map_process_contig(contig_id, (char*) *it);
+//				sprintf(contig_id, "vjf_%d", contig_num++);
+//				fprintf(stderr, ">%s\n%s\n", contig_id, *it);
 			}
 			pthread_mutex_unlock(&contig_writer_mutex);
+
+			if (is_to_be_processed) {
+				vector<mapped_pair> mapped_reads;
+				quick_map_process_contig(contig_id, (char*) *it, mapped_reads);
+
+				int eval_start = 50;
+				int eval_stop  = 390;
+				int read_span  = 35;
+				int insert_low = 175;
+				int insert_high = 175;
+				int floor = 2;
+
+				char is_valid = coverage_is_valid(read_length, strlen(*it),
+						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads);
+
+				if (is_valid) {
+					pthread_mutex_lock(&contig_writer_mutex);
+					vjf_windows.insert(*it);
+					pthread_mutex_unlock(&contig_writer_mutex);
+				}
+			}
 		}
 
 //		pthread_mutex_lock(&contig_writer_mutex);
@@ -1856,8 +1872,8 @@ char* assemble(const char* input,
 	pthread_mutex_destroy(&marker_trackback_mutex);
 
 	// Write windows to disk
-//	printf("Writing windows to disk\n");
-//	output_windows();
+	printf("Writing windows to disk\n");
+	output_windows();
 
 //	printf("output contigs: %d\n", output_contigs);
 

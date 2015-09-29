@@ -6,6 +6,7 @@
 #include <sparsehash/sparse_hash_map>
 
 #include "hash_utils.h"
+#include "quick_map3.h"
 
 using namespace std;
 
@@ -38,19 +39,6 @@ struct qm_hash
 	{
 		return MurmurHash64A(seq, READ_LEN, 97);
 	}
-};
-
-struct read_info {
-	char* id;
-	char* seq;
-	char* quals;
-	char read_num;
-	char is_rc;
-};
-
-struct read_vec {
-	vector<read_info*>* reads;
-	char* seq;
 };
 
 // Allocate 1GB at a time
@@ -256,11 +244,6 @@ void load_reads(char* file1, char* file2) {
 }
 */
 
-struct map_info {
-	read_info* info;
-	int pos;
-};
-
 //TODO: Output base qualities
 void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
@@ -293,7 +276,7 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
 }
 
-void quick_map_process_contig(char* contig_id, char* contig) {
+void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads) {
 
 	int read1_count = 0;
 	int MAX_READ_PAIRS = 1000000;
@@ -314,10 +297,8 @@ void quick_map_process_contig(char* contig_id, char* contig) {
 				m_info->pos = i + 1;
 
 				if (r_info->read_num == 1) {
-//					printf("Adding R1: %s\n", r_info->id);
 					read1[read1_count++] = m_info;
 				} else {
-//					printf("Adding R2: %s\n", r_info->id);
 					// TODO: Handle read 2 multi-mappers
 					read2[r_info->id] = m_info;
 				}
@@ -334,10 +315,17 @@ void quick_map_process_contig(char* contig_id, char* contig) {
 		if (r2 != NULL) {
 
 			if (r1->info->is_rc != r2->info->is_rc) {
-				int insert = abs(r1->pos - r2->pos) + READ_LEN;
+				short insert = abs(r1->pos - r2->pos) + READ_LEN;
 				if (insert >= MIN_INSERT && insert <= MAX_INSERT) {
 					// We have a hit.  Output
-					output_mapping(contig_id, r1, r2, insert);
+					mapped_pair read_pair;
+					read_pair.r1 = r1->info;
+					read_pair.r2 = r2->info;
+					read_pair.pos1 = r1->pos;
+					read_pair.pos2 = r2->pos;
+					read_pair.insert = insert;
+					mapped_reads.push_back(read_pair);
+//					output_mapping(contig_id, r1, r2, insert);
 				}
 			}
 		}
@@ -358,6 +346,7 @@ void quick_map_process_contig(char* contig_id, char* contig) {
 	}
 }
 
+/*
 void process_contigs(char* contig_file) {
 	FILE* fp = fopen(contig_file, "r");
 	char contig_id[256];
@@ -384,6 +373,7 @@ void process_contigs(char* contig_file) {
 	}
 	fclose(fp);
 }
+*/
 
 void output_header(char* contig_file, int argc, char** argv) {
 	fprintf(stderr, "Writing header\n");
