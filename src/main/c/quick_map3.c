@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <algorithm>
+#include <utility>
 #include <sparsehash/sparse_hash_map>
 
 #include "hash_utils.h"
@@ -276,8 +277,13 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
 }
 
+char contains_read(char* read) {
+	sparse_hash_map<const char*, struct read_vec*, qm_hash, qm_eqstr>::const_iterator it = reads->find(read);
+	return it != reads->end();
+}
+
 void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
-		vector<int>& start_positions) {
+		vector<pair<int, int> >& start_positions) {
 
 	int read1_count = 0;
 	int MAX_READ_PAIRS = 1000000;
@@ -288,8 +294,9 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 	// Load read 1 matches into vector
 	// Load read 2 matches into map
 	for (int i=0; i<strlen(contig)-READ_LEN; i++) {
-		read_vec* read_v = (*reads)[contig+i];
-		if (read_v != NULL) {
+		if (contains_read(contig+i)) {
+//		if (read_v != NULL) {
+			read_vec* read_v = (*reads)[contig+i];
 			for (vector<read_info*>::iterator it = read_v->reads->begin(); it != read_v->reads->end(); ++it) {
 				read_info* r_info = *it;
 
@@ -326,8 +333,8 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 					read_pair.pos2 = r2->pos;
 					read_pair.insert = insert;
 					mapped_reads.push_back(read_pair);
-					start_positions.push_back((int) read_pair.pos1);
-					start_positions.push_back((int) read_pair.pos2);
+					start_positions.push_back(make_pair((int) read_pair.pos1, (int) read_pair.pos2));
+					start_positions.push_back(make_pair((int) read_pair.pos2, (int) read_pair.pos1));
 //					output_mapping(contig_id, r1, r2, insert);
 				}
 			}

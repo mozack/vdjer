@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stack>
 #include <list>
+#include <utility>
 #include <vector>
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
@@ -31,11 +32,11 @@ extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_reg
 
 // coverage.c
 extern char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
-		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads, vector<int>& start_positions, char is_debug);
+		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads, vector<pair<int,int> >& start_positions, char is_debug);
 
 // quick_map3.c
 void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
-		vector<int>& start_positions);
+		vector<pair<int,int> >& start_positions);
 
 #define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
@@ -1133,7 +1134,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				fflush(stdout);
 
 				vector<mapped_pair> mapped_reads;
-				vector<int> start_positions;
+				vector<pair<int,int> > start_positions;
 //				printf("Before quick_map_process_contig\n");
 				fflush(stdout);
 
