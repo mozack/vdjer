@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
+#include <algorithm>
 #include <sparsehash/sparse_hash_map>
 
 #include "hash_utils.h"
@@ -276,7 +276,8 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
 }
 
-void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads) {
+void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
+		vector<int>& start_positions) {
 
 	int read1_count = 0;
 	int MAX_READ_PAIRS = 1000000;
@@ -325,11 +326,16 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 					read_pair.pos2 = r2->pos;
 					read_pair.insert = insert;
 					mapped_reads.push_back(read_pair);
+					start_positions.push_back((int) read_pair.pos1);
+					start_positions.push_back((int) read_pair.pos2);
 //					output_mapping(contig_id, r1, r2, insert);
 				}
 			}
 		}
 	}
+
+	// Now sort the start positions
+	sort(start_positions.begin(), start_positions.end());
 
 	// Clean up memory
 	for (int i=0; i<read1_count; i++) {

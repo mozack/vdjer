@@ -31,10 +31,11 @@ extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_reg
 
 // coverage.c
 extern char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
-		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads);
+		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads, vector<int>& start_positions, char is_debug);
 
 // quick_map3.c
-extern void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads);
+void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
+		vector<int>& start_positions);
 
 #define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
@@ -86,6 +87,8 @@ int running_threads = 0;
 
 // Tracks vjf windows
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows;
+
+dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
 
 #define MAX_DISTANCE_FROM_MARKER 1000
 
@@ -1111,20 +1114,34 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			char is_to_be_processed = 0;
 			char contig_id[256];
 
-			// TODO: Track all contigs to avoid mapping to filtered contigs more than once.
 			// TODO: Use RW lock here?
 
 			pthread_mutex_lock(&contig_writer_mutex);
-			if (!contains_seq(vjf_windows, (char*) *it)) {
+			if (!contains_seq(vjf_window_candidates, (char*) *it)) {
 				is_to_be_processed = 1;
-//				sprintf(contig_id, "vjf_%d", contig_num++);
+				// Don't process same window twice
+				vjf_window_candidates.insert(*it);
+				sprintf(contig_id, "vjf_%d", contig_num++);
 //				fprintf(stderr, ">%s\n%s\n", contig_id, *it);
 			}
 			pthread_mutex_unlock(&contig_writer_mutex);
 
 			if (is_to_be_processed) {
+//				printf("A0\n");
+				fflush(stdout);
+//				printf("A1: [%s]\n", *it);
+				fflush(stdout);
+
 				vector<mapped_pair> mapped_reads;
-				quick_map_process_contig(contig_id, (char*) *it, mapped_reads);
+				vector<int> start_positions;
+//				printf("Before quick_map_process_contig\n");
+				fflush(stdout);
+
+
+				quick_map_process_contig(contig_id, (char*) *it, mapped_reads, start_positions);
+
+				printf("Contig id: [%s]\tmapped_reads: [%d]\t%s\n", contig_id, mapped_reads.size(), *it);
+				fflush(stdout);
 
 				int eval_start = 50;
 				int eval_stop  = 390;
@@ -1133,14 +1150,25 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				int insert_high = 175;
 				int floor = 2;
 
+				char* str_debug = "GCTAAGAAGGCAGGGTCCTCAGTGAAGATTTCCTGTAAGGTTTCAGGATACATCTTCACCCACCGTTCCCTGCACTGGTTACGACAGGCCCCCGGACAAGCGCTTGAGTGGATGGGATGGATCACACCTTTCAATGGTAGCTCCAACTACGCACAGGAATTCCAGGAAGGAGTCACCATTACCAGGGACAGGTCTATGAGCACAGCCTGGATGGAGCTGAGCAGCATGAGATCTGAGGACACATCCATGTATTACTGTGCACCTGCAGCTTATGATTACGTTTGTGGGAGTTATGGGTATATCGACAACTGGATCGACCTCTGGGTCCAGGGAACCCTGGTCTCCGTGGCTTCACCCTCCACCATGGGCCCATCGGTCTTCCCCCTGGCACCCTCCTCCAAGAGCACCTCTGGGGGCACAGCAGCCCTGGGCTGCCTG";
+				char is_debug = 0;
+				if (strcmp(*it, str_debug) == 0) {
+					is_debug = 1;
+				}
+
 				char is_valid = coverage_is_valid(read_length, strlen(*it),
-						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads);
+						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
 
 				if (is_valid) {
 					pthread_mutex_lock(&contig_writer_mutex);
 					vjf_windows.insert(*it);
 					pthread_mutex_unlock(&contig_writer_mutex);
+					printf("VALID contig: [%s]\n", *it);
+				} else {
+//					printf("INVALID contig: [%s]\n", *it);
 				}
+
+				fflush(stdout);
 			}
 		}
 
@@ -2012,6 +2040,7 @@ int main(int argc, char* argv[]) {
 	char* c_region = argv[18];
 
 	vjf_windows.set_empty_key(NULL);
+	vjf_window_candidates.set_empty_key(NULL);
 	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
 			vjf_j_conserved, vjf_window_span, vjf_j_extension);
 
