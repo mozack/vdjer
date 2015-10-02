@@ -11,12 +11,13 @@ char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int
 		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads,
 		               vector<pair<int,int> >& start_positions, char is_debug) {
 
+	floor = 1;
 	int num_reads = start_positions.size();
 	int begin_idx = 0;
 	int pos = eval_start;
 	char is_valid = 1;
 
-	while (pos+insert_high < eval_stop && is_valid) {
+	while (pos+insert_high+read_length/2 < eval_stop && is_valid) {
 		while(begin_idx<num_reads && start_positions[begin_idx].first+read_length-1 < pos) {
 			begin_idx += 1;
 		}
@@ -38,7 +39,7 @@ char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int
 		for (int j=mate_low; j<mate_high; j++) {
 			if (coverage[j] < floor) {
 				is_valid = 0;
-				printf("MATE_FLOOR: %s\t%d\t%d\n", mapped_reads[0].contig_id, j, coverage[j]);
+				printf("MATE_FLOOR: %s\t%d\t%d\t%d\n", mapped_reads[0].contig_id, pos, j, coverage[j]);
 				break;
 			}
 		}
