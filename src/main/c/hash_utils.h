@@ -2,6 +2,7 @@
 #define __HASH_UTILS__
 
 extern int kmer_size;
+extern int CONTIG_SIZE;
 
 uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed );
 
@@ -45,4 +46,27 @@ struct vjf_hash
 	}
 };
 
+
+//
+// Equals operator and hash on string using global "CONTIG_SIZE" variable.
+//
+struct contig_eqstr
+{
+  bool operator()(const char* s1, const char* s2) const
+  {
+    return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, CONTIG_SIZE) == 0);
+  }
+};
+
+struct contig_hash
+{
+	uint64_t operator()(const char* kmer) const
+	{
+		return MurmurHash64A(kmer, CONTIG_SIZE, 97);
+		//return chunk;
+	}
+};
+
+
 #endif // __HASH_UTILS__
+

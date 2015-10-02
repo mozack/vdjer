@@ -87,7 +87,7 @@ pthread_mutex_t marker_trackback_mutex;
 int running_threads = 0;
 
 // Tracks vjf windows
-dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows;
+dense_hash_set<const char*, contig_hash, contig_eqstr> vjf_windows;
 
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
 
@@ -112,9 +112,7 @@ int min_base_quality;
 //#define MIN_CONTIG_SCORE -6
 float MIN_CONTIG_SCORE;
 
-
-
-
+int CONTIG_SIZE;
 
 struct struct_pool {
 	struct node_pool* node_pool;
@@ -366,7 +364,7 @@ void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, 
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
 
-	printf(stderr, "input_len: %ld, record_len: %d\n", input_len, record_len);
+	fprintf(stderr, "input_len: %ld, record_len: %d\n", input_len, record_len);
 	size_t num_records = input_len / record_len;
 	size_t record = 0;
 	const char* ptr = input;
@@ -638,7 +636,7 @@ void print_kmer(char* kmer) {
 void print_kmer(struct node* node) {
 	fprintf(stderr, "%x\t", node);
     for (int i=0; i<kmer_size; i++) {
-    	printf(stderr, "%c", node->kmer[i]);
+    	fprintf(stderr, "%c", node->kmer[i]);
     }
 }
 
@@ -1037,6 +1035,12 @@ char contains_seq(dense_hash_set<const char*, vjf_hash, vjf_eqstr>& seq_set, cha
 	return it != seq_set.end();
 }
 
+char contains_seq(dense_hash_set<const char*, contig_hash, contig_eqstr>& seq_set, char* seq) {
+	dense_hash_set<const char*, contig_hash, contig_eqstr>::const_iterator it = seq_set.find(seq);
+	return it != seq_set.end();
+}
+
+
 int contig_num = 1;
 
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
@@ -1071,10 +1075,17 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			char is_to_be_processed = 0;
 			char contig_id[256];
 
-			// TODO: Use RW lock here?
+			CONTIG_SIZE = 341;
+			int eval_start = 50;
+			int eval_stop  = 390;
+			int read_span  = 35;
+			int insert_low = 175;
+			int insert_high = 175;
+			int floor = 2;
 
+			// TODO: Use RW lock here?
 			pthread_mutex_lock(&contig_writer_mutex);
-			if (!contains_seq(vjf_window_candidates, (char*) *it)) {
+			if (!contains_seq(vjf_window_candidates, (char*) *it) && !contains_seq(vjf_windows, ((char*) *it) + (eval_start-1))) {
 				is_to_be_processed = 1;
 				// Don't process same window twice
 				vjf_window_candidates.insert(*it);
@@ -1089,13 +1100,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 				quick_map_process_contig(contig_id, (char*) *it, mapped_reads, start_positions);
 
-				int eval_start = 50;
-				int eval_stop  = 390;
-				int read_span  = 35;
-				int insert_low = 175;
-				int insert_high = 175;
-				int floor = 2;
-
 				/*
 				char* str_debug = "GCTAAGAAGGCAGGGTCCTCAGTGAAGATTTCCTGTAAGGTTTCAGGATACATCTTCACCCACCGTTCCCTGCACTGGTTACGACAGGCCCCCGGACAAGCGCTTGAGTGGATGGGATGGATCACACCTTTCAATGGTAGCTCCAACTACGCACAGGAATTCCAGGAAGGAGTCACCATTACCAGGGACAGGTCTATGAGCACAGCCTGGATGGAGCTGAGCAGCATGAGATCTGAGGACACATCCATGTATTACTGTGCACCTGCAGCTTATGATTACGTTTGTGGGAGTTATGGGTATATCGACAACTGGATCGACCTCTGGGTCCAGGGAACCCTGGTCTCCGTGGCTTCACCCTCCACCATGGGCCCATCGGTCTTCCCCCTGGCACCCTCCTCCAAGAGCACCTCTGGGGGCACAGCAGCCCTGGGCTGCCTG";
 				char is_debug = 0;
@@ -1103,10 +1107,13 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 					is_debug = 1;
 				}
 				*/
-				is_debug = 0;
+				char is_debug = 0;
 
 				char is_valid = coverage_is_valid(read_length, strlen(*it),
 						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
+
+				// Truncate assembled contig at eval stop
+				((char*)(*it))[eval_start+CONTIG_SIZE-1] = '\0';
 
 				if (is_valid) {
 					pthread_mutex_lock(&contig_writer_mutex);
@@ -1114,6 +1121,8 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 					pthread_mutex_unlock(&contig_writer_mutex);
 //					printf("VALID contig: [%s]\n", *it);
 				}
+
+				//TODO: Free window
 			}
 		}
 	}
@@ -1122,7 +1131,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 //TODO: Write windows to file
 void output_windows() {
 	int contig_num = 1;
-	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
+	for (dense_hash_set<const char*, contig_hash, contig_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
 		fprintf(stderr, ">vjf_%d\n%s\n", contig_num++, *it);
 	}
 }
