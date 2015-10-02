@@ -1173,9 +1173,9 @@ int build_contigs(
 		struct contig* contig = contigs.top();
 
 		if (is_node_visited(contig, contig->curr_node)) {
-			printf("Repeat node: ");
+			fprintf(stderr, "Repeat node: ");
 			print_kmer(contig->curr_node);
-			printf("\n");
+			fprintf(stderr, "\n");
 			// We've encountered a repeat
 			contig->is_repeat = 1;
 			if ((!shadow_mode) && (!stop_on_repeat)) {
@@ -1297,8 +1297,8 @@ void* worker_thread(void* t) {
 				shadow_mode, contig_str);
 
 		if (status != OK) {
-			printf("Status: %d\n", status);
-			fflush(stdout);
+			fprintf(stderr, "Status: %d\n", status);
+			fflush(stderr);
 			exit(status);
 		}
 
@@ -1386,9 +1386,9 @@ sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simplify_grap
 		struct node* node = it->second;
 
 		if (is_simplify_start_point(node)) {
-			printf("start point:\n");
+			fprintf(stderr, "start point:\n");
 			print_node(node);
-			printf("-----\n");
+			fprintf(stderr, "-----\n");
 			is_in_linear_path = 1;
 			curr_nodes.clear();
 			curr_nodes.push_back(node);
@@ -1428,7 +1428,7 @@ sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simplify_grap
 						seq[idx++] = (*node_it)->kmer[0];
 					}
 
-					printf("to nodes: %x\n", node->toNodes);
+					fprintf(stderr, "to nodes: %x\n", node->toNodes);
 					if (node->toNodes == NULL) {
 						// Last node in path.  Append entire kmer
 						memcpy(&seq[idx], node->kmer, kmer_size);
@@ -1437,7 +1437,7 @@ sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simplify_grap
 						seq[idx] = node->kmer[0];
 						struct linked_node* to_node =  node->toNodes;
 						while (to_node != NULL) {
-							printf("pushing...\n");
+							fprintf(stderr, "pushing...\n");
 							compressed_node->to_kmers->push_back(to_node->node->kmer);
 							to_node = to_node->next;
 						}
@@ -1448,7 +1448,7 @@ sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simplify_grap
 					compressed_node->freq1 = curr_nodes.front()->frequency;
 					compressed_node->freq2 = node->frequency;
 
-					printf("seq: %s\n", compressed_node->seq);
+					fprintf(stderr, "seq: %s\n", compressed_node->seq);
 
 					// Use the first kmer contributing to this compressed node as the key into the storage map.
 					if (curr_nodes.front()->fromNodes == NULL && node->toNodes == NULL) {
@@ -1547,20 +1547,20 @@ void write_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 		for (vector<char*>::iterator kmer_it = curr_node->to_kmers->begin(); kmer_it != curr_node->to_kmers->end(); kmer_it++) {
 			char* kmer = (*kmer_it);
 
-			printf("from_seq: %s\n", curr_node->seq);
+			fprintf(stderr, "from_seq: %s\n", curr_node->seq);
 			fflush(stdout);
-			printf("to_kmer: \n");
+			fprintf(stderr, "to_kmer: \n");
 			print_kmer(kmer);
 
 			print_node((*nodes)[kmer]);
 
-			printf("\n");
+			fprintf(stderr, "\n");
 			fflush(stdout);
 
 			if (simple_nodes->find(kmer) != simple_nodes->end()) {
 
 				struct simple_node* to_node = (*simple_nodes)[kmer];
-				printf("edge to: %x\n", to_node);
+				fprintf(stderr, "edge to: %x\n", to_node);
 				fflush(stdout);
 
 
@@ -1578,10 +1578,10 @@ void write_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 				}
 				*/
 			} else {
-				printf("Missing to node: ");
+				fprintf(stderr, "Missing to node: ");
 				print_kmer(kmer);
-				printf("\n-----------\n");
-				fflush(stdout);
+				fprintf(stderr, "\n-----------\n");
+				fflush(stderr);
 			}
 		}
 	}
@@ -1694,7 +1694,7 @@ char* assemble(const char* input,
 	sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new sparse_hash_map<const char*, struct node*, my_hash, eqstr>();
 
 	long startTime = time(NULL);
-	printf("Assembling: -> %s\n", output);
+	fprintf(stderr, "Assembling: -> %s\n", output);
 	nodes->set_deleted_key(NULL);
 
 	pthread_mutex_init(&running_thread_mutex, NULL);
@@ -1707,7 +1707,7 @@ char* assemble(const char* input,
 	build_graph2(input, nodes, pool, 1);
 
 	char isUnalignedRegion = !truncate_on_repeat;
-	printf("Prune graph 1...\n");
+	fprintf(stderr, "Prune graph 1...\n");
 	fflush(stdout);
 	prune_graph(nodes, isUnalignedRegion);
 
@@ -1722,15 +1722,15 @@ char* assemble(const char* input,
 
 	if (nodes->size() >= MAX_NODES) {
 		status = TOO_MANY_NODES;
-		printf("Graph too complex for region: %s\n", prefix);
+		fprintf(stderr, "Graph too complex for region: %s\n", prefix);
 	}
 
 	//TODO: Set this explicitly
 //	char isUnalignedRegion = !truncate_on_repeat;
-	printf("Prune graph 2...\n");
+	fprintf(stderr, "Prune graph 2...\n");
 	fflush(stdout);
 	prune_graph(nodes, isUnalignedRegion);
-	printf("Prune graph 2 Done...\n");
+	fprintf(stderr, "Prune graph 2 Done...\n");
 	fflush(stdout);
 
 	dump_graph(nodes, "graph.txt");
@@ -1795,12 +1795,12 @@ char* assemble(const char* input,
 
 
 		if (ret != 0) {
-			printf("Error creating thread 1: %d\n", ret);
+			fprintf(stderr, "Error creating thread 1: %d\n", ret);
 			fflush(stdout);
 			exit(-1);
 		}
 
-		printf("Running threads: %d\n", running_threads);
+		fprintf(stderr, "Running threads: %d\n", running_threads);
 
 		num_threads++;
 
@@ -1834,8 +1834,8 @@ char* assemble(const char* input,
 //S		root_nodes = root_nodes->next;
 
 		if ((num_roots % 10) == 0) {
-			printf("Processed %d root nodes\n", num_roots);
-			printf("Num candidate contigs: %d\n", vjf_windows.size());
+			fprintf(stderr, "Processed %d root nodes\n", num_roots);
+			fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
 			fflush(stdout);
 		}
 	}
@@ -1851,7 +1851,7 @@ char* assemble(const char* input,
 	pthread_mutex_destroy(&marker_trackback_mutex);
 
 	// Write windows to disk
-	printf("Writing windows to disk\n");
+	fprintf(stderr, "Writing windows to disk\n");
 	output_windows();
 
 //	printf("output contigs: %d\n", output_contigs);
@@ -1865,10 +1865,10 @@ char* assemble(const char* input,
 	long stopTime = time(NULL);
 
 	if (kmer_size != input_kmer_size) {
-		printf("What!!?? %d : %d\n", kmer_size, input_kmer_size);
+		fprintf(stderr, "What!!?? %d : %d\n", kmer_size, input_kmer_size);
 	}
 	assert(kmer_size == input_kmer_size);
-	printf("Done assembling(%ld): %s, %d\n", (stopTime-startTime), output, contig_count);
+	fprintf(stderr, "Done assembling(%ld): %s, %d\n", (stopTime-startTime), output, contig_count);
 
 	if (status == OK || status == TOO_MANY_PATHS_FROM_ROOT) {
 		return contig_str;
@@ -2010,10 +2010,10 @@ int main(int argc, char* argv[]) {
 	char* bam_file = input_file;
 	char* input = NULL;
 	char* unaligned_input = NULL;
-	printf("Extracting reads...\n");
+	fprintf(stderr, "Extracting reads...\n");
 	fflush(stdout);
 	extract(bam_file, vdj_fasta, v_region, c_region, input, unaligned_input);
-	printf("Read extract done...\n");
+	fprintf(stderr, "Read extract done...\n");
 	fflush(stdout);
 
 //	char* input = load_file(input_file);
