@@ -2061,8 +2061,10 @@ int main(int argc, char* argv[]) {
 	char* input = NULL;
 	char* unaligned_input = NULL;
 	printf("Extracting reads...\n");
+	fflush(stdout);
 	extract(bam_file, vdj_fasta, v_region, c_region, input, unaligned_input);
 	printf("Read extract done...\n");
+	fflush(stdout);
 
 //	char* input = load_file(input_file);
 //	char* unaligned_input = NULL;
