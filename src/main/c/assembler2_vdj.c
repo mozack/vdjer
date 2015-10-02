@@ -1134,12 +1134,17 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 //TODO: Write windows to file
 void output_windows() {
 
-	FILE* fp = fopen("vdj_contigs.fa", "w");
+	char* contig_file = "vdj_contigs.fa";
+	FILE* fp = fopen(contig_file, "w");
 	int contig_num = 1;
 	for (dense_hash_set<const char*, contig_hash, contig_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
 		fprintf(fp, ">vjf_%d\n%s\n", contig_num++, *it);
 	}
 	fclose(fp);
+
+	fprintf(stderr, "Writing Alignments\n");
+	quick_map_process_contig_file(contig_file);
+	fprintf(stderr, "Writing Alignments Done.\n");
 }
 
 //#define OK 0

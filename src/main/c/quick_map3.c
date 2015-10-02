@@ -163,7 +163,7 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 	char seq[256];
 	char quals[256];
 
-	const char* format = "MAPPING:%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
+	const char* format = "%s\t%d\t%s\t%d\t255\t%dM\t=\t%d\t%d\t%s\t%s\n";
 
 	// Only need to add null terminators once.
 	seq[READ_LEN] = '\0';
@@ -171,11 +171,11 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
 	strncpy(seq, r1->info->seq, READ_LEN);
 	strncpy(quals, r1->info->quals, READ_LEN);
-	fprintf(stderr, format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, seq, quals);
+	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, seq, quals);
 
 	strncpy(seq, r2->info->seq, READ_LEN);
 	strncpy(quals, r2->info->quals, READ_LEN);
-	fprintf(stderr, format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
+	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
 }
 
 char contains_read(char* read) {
@@ -185,6 +185,12 @@ char contains_read(char* read) {
 
 void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
 		vector<pair<int, int> >& start_positions) {
+
+	quick_map_process_contig(contig_id, contig, mapped_reads, start_positions, 0);
+}
+
+void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
+		vector<pair<int, int> >& start_positions, char should_output) {
 
 	int read1_count = 0;
 	int MAX_READ_PAIRS = 1000000;
@@ -235,7 +241,9 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 					mapped_reads.push_back(read_pair);
 					start_positions.push_back(make_pair((int) read_pair.pos1, (int) read_pair.pos2));
 					start_positions.push_back(make_pair((int) read_pair.pos2, (int) read_pair.pos1));
-//					output_mapping(contig_id, r1, r2, insert);
+					if (should_output) {
+						output_mapping(contig_id, r1, r2, insert);
+					}
 				}
 			}
 		}
@@ -259,7 +267,7 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 	}
 }
 
-void output_header(char* contig_file, int argc, char** argv) {
+void output_header(char* contig_file) {
 	fprintf(stderr, "Writing header\n");
 	FILE* fp = fopen(contig_file, "r");
 	char contig_id[256];
@@ -277,7 +285,8 @@ void output_header(char* contig_file, int argc, char** argv) {
 		}
 	}
 
-
+	//TODO: Add @PG
+	/*
 	char pg[10000];
 	pg[0] = '\0';
 	int chars_left = 9999;
@@ -288,10 +297,42 @@ void output_header(char* contig_file, int argc, char** argv) {
 	}
 
 	printf("@PG\tID:quickmap\tPN:quickmap\tCL:%s\n", pg);
+	*/
 
 	fclose(fp);
 	fprintf(stderr, "Done writing header\n");
 	fflush(stderr);
+}
+
+void quick_map_process_contig_file(char* contig_file) {
+	output_header(contig_file);
+
+	FILE* fp = fopen(contig_file, "r");
+	char contig_id[256];
+	char* contig = (char*) calloc(MAX_CONTIG_LEN, sizeof(char));
+	int num_contigs = 0;
+
+	while (fgets(contig, MAX_CONTIG_LEN, fp) != NULL) {
+		contig[strlen(contig)-1] = '\0';
+
+		if (contig[0] == '>') {
+			strncpy(contig_id, &(contig[1]), 256);
+		} else {
+//			fprintf(stderr, "Processing contig [%s]\n", contig_id);
+//			fflush(stderr);
+
+			vector<mapped_pair> mapped_reads;
+			vector<pair<int,int> > start_positions;
+			quick_map_process_contig(contig_id, contig, mapped_reads, start_positions, 1);
+			num_contigs++;
+			if ((num_contigs % 1000) == 0) {
+				fprintf(stderr, "[%d] contigs processed\n", num_contigs);
+				fflush(stderr);
+				fflush(stdout);
+			}
+		}
+	}
+	fclose(fp);
 }
 
 /*
