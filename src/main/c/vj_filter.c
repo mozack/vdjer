@@ -275,11 +275,11 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 							char* final_win = (char*) calloc(1024, sizeof(char));
 							strcpy(final_win, win);
 
-							pthread_mutex_lock(&vjf_mutex);
+//							pthread_mutex_lock(&vjf_mutex);
 							windows.insert(final_win);
 //							fprintf(stderr, final_win);
 //							fprintf(stderr, "\n");
-							pthread_mutex_unlock(&vjf_mutex);
+//							pthread_mutex_unlock(&vjf_mutex);
 						}
 					}
 				}
