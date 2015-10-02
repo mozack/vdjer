@@ -1090,6 +1090,9 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				// Don't process same window twice
 				vjf_window_candidates.insert(*it);
 				sprintf(contig_id, "vjf_%d", contig_num++);
+				if ((contig_num % 1000) == 0) {
+					fprintf(stderr, "Processing contig num: %d\n", contig_num);
+				}
 //				fprintf(stderr, ">%s\n%s\n", contig_id, *it);
 			}
 			pthread_mutex_unlock(&contig_writer_mutex);
@@ -1112,17 +1115,17 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				char is_valid = coverage_is_valid(read_length, strlen(*it),
 						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
 
-				// Truncate assembled contig at eval stop
-				((char*)(*it))[eval_start+CONTIG_SIZE-1] = '\0';
-
 				if (is_valid) {
-					pthread_mutex_lock(&contig_writer_mutex);
-					vjf_windows.insert(*it);
-					pthread_mutex_unlock(&contig_writer_mutex);
-//					printf("VALID contig: [%s]\n", *it);
-				}
+					//fprintf(stderr, "VALID contig: [%s]\n", *it);
 
-				//TODO: Free window
+					// Truncate assembled contig at eval stop
+					((char*)(*it))[eval_start+CONTIG_SIZE-1] = '\0';
+
+					// Add contig to set
+					pthread_mutex_lock(&contig_writer_mutex);
+					vjf_windows.insert(((char*) *it) + (eval_start-1));
+					pthread_mutex_unlock(&contig_writer_mutex);
+				}
 			}
 		}
 	}
@@ -1130,10 +1133,13 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 //TODO: Write windows to file
 void output_windows() {
+
+	FILE* fp = fopen("vdj_contigs.fa", "w");
 	int contig_num = 1;
 	for (dense_hash_set<const char*, contig_hash, contig_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
-		printf(">vjf_%d\n%s\n", contig_num++, *it);
+		fprintf(fp, ">vjf_%d\n%s\n", contig_num++, *it);
 	}
+	fclose(fp);
 }
 
 //#define OK 0
