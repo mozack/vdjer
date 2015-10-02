@@ -46,7 +46,7 @@ char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int
 		for (int j=mate_low; j<mate_high; j++) {
 			if (coverage[j] < floor) {
 				is_valid = 0;
-				printf("MATE_FLOOR: %s\t%d\t%d\t%d\n", mapped_reads[0].contig_id, pos, j, coverage[j]);
+//				printf("MATE_FLOOR: %s\t%d\t%d\t%d\n", mapped_reads[0].contig_id, pos, j, coverage[j]);
 				break;
 			}
 		}
@@ -75,13 +75,8 @@ char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval
 	while (i < num_reads && start_positions[i].first <= (eval_stop-read_span)+1) {
 		if (start_positions[i].first >= eval_start) {
 
-//			if (is_debug) {
-//				printf("%s\t%d\t%d\n", mapped_reads[i].contig_id, i, mapped_reads[i].pos1);
-//			}
-
 			if (i < floor) {
 				// Invalid
-//				printf("BEGIN_FLOOR @ %d\t%s\n", mapped_reads[i].pos1, mapped_reads[i].contig_id);
 				is_valid = 0;
 				break;
 			}
@@ -90,7 +85,6 @@ char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval
 				first_pos_in_range = start_positions[i].first;
 				if (first_pos_in_range > eval_start+start_gap) {
 					// Gap in coverage near eval_start
-///					printf("START_GAP @ %d\t%s\n", mapped_reads[i].pos1, mapped_reads[i].contig_id);
 					is_valid = 0;
 					break;
 				}
@@ -99,7 +93,6 @@ char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval
 			// Require at least floor reads starting within start gap of current position
 			if (start_positions[i-floor].first < start_positions[i].first-start_gap) {
 				// Gap in coverage
-//				printf("MID_FLOOR @ %d\t%s\n", mapped_reads[i].pos1, mapped_reads[i].contig_id);
 				is_valid = 0;
 				break;
 			}
@@ -121,10 +114,6 @@ char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval
 	if (i > 0 && num_reads > 0 && start_positions[i].first > eval_stop - read_length && is_valid) {
 		is_valid = 1;
 	} else {
-		if (is_valid = 1) {
-			printf("POST_CHECK\n");
-		}
-//		printf("POST_CHECK. num_reads: %d\t%s\n", num_reads, mapped_reads[i].contig_id);
 		is_valid = 0;
 	}
 

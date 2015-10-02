@@ -146,105 +146,6 @@ void add_read_info(char* read_id, char* seq, char* quals, char read_num, char is
 //	printf("seq: %s , read_info1->read_num: %d\n", seq, read_info1->read_num);
 }
 
-/*
-void load_reads(char* file1, char* file2) {
-
-	FILE* fp1 = fopen(file1, "r");
-	FILE* fp2 = fopen(file2, "r");
-
-	read_buf = (char*) calloc(READ_BLOCK, sizeof(char));
-	read_buf_start = read_buf;
-
-	qual_buf = (char*) calloc(READ_BLOCK, sizeof(char));
-	qual_buf_start = qual_buf;
-
-	char line1[MAX_LINE];
-	char line2[MAX_LINE];
-	char bases1[MAX_LINE];
-	char bases2[MAX_LINE];
-	char rc1[MAX_LINE];
-	char rc2[MAX_LINE];
-	char rc_quals1[MAX_LINE];
-	char rc_quals2[MAX_LINE];
-
-	char* read_id;
-	char line_num = 1;
-
-	while (fgets(line1, MAX_LINE, fp1) != NULL && fgets(line2, MAX_LINE, fp2) != NULL) {
-		// Swallow newlines
-		line1[strlen(line1)-1] = '\0';
-		line2[strlen(line2)-1] = '\0';
-
-		if (line_num == 1) {
-
-			// Strip forward slash and anything following
-			char* pch = strchr(line1, '/');
-			if (pch != NULL) {
-				*pch= '\0';
-			}
-
-			pch = strchr(line2, '/');
-			if (pch != NULL) {
-				*pch = '\0';
-			}
-
-			// Strip spaces and anything following
-			pch = strchr(line1, ' ');
-			if (pch != NULL) {
-				*pch= '\0';
-			}
-
-			pch = strchr(line2, ' ');
-			if (pch != NULL) {
-				*pch = '\0';
-			}
-
-			if (strncmp(line1, line2, MAX_LINE) != 0) {
-				fprintf(stderr, "Mismatched reads: %s -- %s\n", line1, line2);
-				exit(-1);
-			}
-
-			// Copy read id to read buffer
-			strncpy(read_buf, line1, MAX_LINE);
-			read_id = read_buf;
-			advance_read_buf();
-		} else if (line_num == 2) {
-			rc(line1, rc1);
-			rc(line2, rc2);
-			strncpy(bases1, line1, MAX_LINE);
-			strncpy(bases2, line2, MAX_LINE);
-
-//			printf("line1: %s -- line2: %s\n", line1, line2);
-//			printf("rc1: %s -- rc2: %s\n", rc1, rc2);
-
-
-		} else if (line_num == 4) {
-			reverse(line1, rc_quals1);
-			reverse(line2, rc_quals2);
-
-			// Read 1, Forward
-			add_read_info(read_id, bases1, line1, 1, 0);
-			// Read 1, Reverse
-			add_read_info(read_id, rc1, rc_quals1, 1, 1);
-			// Read 2, Forward
-			add_read_info(read_id, bases2, line2, 2, 0);
-			// Read 2, Reverse
-			add_read_info(read_id, rc2, rc_quals2, 2, 1);
-		}
-
-		if (line_num == 4) {
-			line_num = 1;
-		} else {
-			line_num += 1;
-		}
-	}
-
-	fprintf(stderr, "Num index entries: %d\n", reads->size());
-	fclose(fp1);
-	fclose(fp2);
-}
-*/
-
 //TODO: Output base qualities
 void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
@@ -270,11 +171,11 @@ void output_mapping(char* contig_id, map_info* r1, map_info* r2, int insert) {
 
 	strncpy(seq, r1->info->seq, READ_LEN);
 	strncpy(quals, r1->info->quals, READ_LEN);
-	printf(format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, seq, quals);
+	fprintf(stderr, format, read_id, flag1, contig_id, r1->pos, READ_LEN, r2->pos, insert, seq, quals);
 
 	strncpy(seq, r2->info->seq, READ_LEN);
 	strncpy(quals, r2->info->quals, READ_LEN);
-	printf(format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
+	fprintf(stderr, format, read_id, flag2, contig_id, r2->pos, READ_LEN, r1->pos, insert, seq, quals);
 }
 
 char contains_read(char* read) {
@@ -295,7 +196,6 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 	// Load read 2 matches into map
 	for (int i=0; i<strlen(contig)-READ_LEN; i++) {
 		if (contains_read(contig+i)) {
-//		if (read_v != NULL) {
 			read_vec* read_v = (*reads)[contig+i];
 			for (vector<read_info*>::iterator it = read_v->reads->begin(); it != read_v->reads->end(); ++it) {
 				read_info* r_info = *it;
@@ -358,35 +258,6 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 		free(m_info);
 	}
 }
-
-/*
-void process_contigs(char* contig_file) {
-	FILE* fp = fopen(contig_file, "r");
-	char contig_id[256];
-	char* contig = (char*) calloc(MAX_CONTIG_LEN, sizeof(char));
-	int num_contigs = 0;
-
-	while (fgets(contig, MAX_CONTIG_LEN, fp) != NULL) {
-		contig[strlen(contig)-1] = '\0';
-
-		if (contig[0] == '>') {
-			strncpy(contig_id, &(contig[1]), 256);
-		} else {
-//			fprintf(stderr, "Processing contig [%s]\n", contig_id);
-//			fflush(stderr);
-
-			quick_map_process_contig(contig_id, contig);
-			num_contigs++;
-			if ((num_contigs % 1000) == 0) {
-				fprintf(stderr, "[%d] contigs processed\n", num_contigs);
-				fflush(stderr);
-				fflush(stdout);
-			}
-		}
-	}
-	fclose(fp);
-}
-*/
 
 void output_header(char* contig_file, int argc, char** argv) {
 	fprintf(stderr, "Writing header\n");

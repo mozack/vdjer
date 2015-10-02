@@ -62,6 +62,7 @@ void bam_get_qual_str(bam1_t *b, char* quals) {
 	quals[b->core.l_qseq] = '\0';
 }
 
+/*
 void test_interval(char* bam_file, char* interval) {
     bam_info bam;
     bam_open(bam_file, &bam);
@@ -109,6 +110,7 @@ void test_unmapped(char* bam_file) {
 		}
 	}
 }
+*/
 
 //TODO: Move the following from quick_map2.c
 char complement(char ch) {
@@ -182,7 +184,7 @@ void load_kmers(char* vdj_fasta) {
 
 	FILE* vdj = fopen(vdj_fasta, "r");
 	if (vdj == NULL) {
-		printf("Could not open file: [%s]", vdj_fasta);
+		fprintf(stderr, "Could not open file: [%s]", vdj_fasta);
 	}
 
 	char buf[1024];
@@ -271,7 +273,6 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char* qname = bam_get_qname(b);
 
 		if (!contains_str(primary_reads, qname)) {
-			printf("Adding qname: [%s]\n", qname);
 			strncpy(read_name_buf_ptr, qname, strlen(qname));
 			primary_reads.insert(read_name_buf_ptr);
 			read_name_buf_ptr += strlen(qname)+1;
@@ -280,7 +281,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 
 	hts_itr_destroy(iter);
 
-	printf("primary_reads size: [%d]\n", primary_reads.size());
+	fprintf(stderr, "primary_reads size: [%d]\n", primary_reads.size());
 
 	// Cache constant read names
 	hts_itr_t *iter2 = sam_itr_querys(bam.idx, bam.header, c_region);
@@ -381,29 +382,12 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		}
 	}
 
-//	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=primary_reads.begin(); it!=primary_reads.end(); it++) {
-//		printf("qname1: %s\n", *it);
-//	}
-//
-//	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=secondary_reads.begin(); it!=secondary_reads.end(); it++) {
-//		printf("qname2: %s\n", *it);
-//	}
-
 	bam_destroy1(b);
 	bam_close(&bam);
 
 	kmer_size = orig_kmer_size;
 
-//	printf("primary_buf: %s\n", primary_buf);
-
 	free(extract_vdj_kmers_buf);
-
-	// Do not free read name buf, it is needed downstream.
-//	free(read_name_buf);
-
-//	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=primary_reads.begin(); it!=primary_reads.end(); it++) {
-//		free((void*) *it);
-//	}
 }
 
 /*

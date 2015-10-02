@@ -62,7 +62,6 @@ void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* 
 	unsigned long kmer;
 	int freq;
 	while (fscanf(in, "%lu\t%d\n", &kmer, &freq) == 2) {
-//		printf("read: %lu, %d\n", kmer, freq);
 		if (freq <= max_dist) {
 			kmers->insert(kmer);
 		}
@@ -118,7 +117,7 @@ int find_frame(char* contig, int v, int window) {
 	for (int i=0; i<3; i++) {
 		if (is_in_frame(start, end, i, contig)) {
 			if (frame != -1) {
-				printf("Multiple frames in: %s : %d\n", contig, v);
+				fprintf(stderr, "Multiple frames in: %s : %d\n", contig, v);
 			} else {
 				frame = i;
 			}
@@ -221,18 +220,12 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 
 	for (int i=0; i<len; i++) {
 		unsigned long kmer = seq_to_int(contig_index);
-//		if (kmer == 0) {
-//			printf("0 kmer in: [%s] at: [%s].  len: [%d]. contig: [%x] contig_index: [%x]\n", contig, contig_index, len, contig, contig_index);
-//
-//		}
 
 		if (matches_vmer(kmer)) {
-//			fprintf(stderr, "v: %d\n", i);
 			v_indices.push_back(i);
 		}
 
 		if (matches_jmer(kmer)) {
-//			fprintf(stderr, "j: %d\n", i);
 			j_indices.push_back(i);
 		}
 
@@ -303,10 +296,10 @@ void init(char* v_file, char* j_file, int max_dist) {
 	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 	jmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
 
-	printf("Loading vmers\n");
+	fprintf(stderr, "Loading vmers\n");
 	fflush(stderr);
 	load_kmers(v_file, vmers, max_dist);
-	printf("Loading jmers\n");
+	fprintf(stderr, "Loading jmers\n");
 	fflush(stderr);
 	load_kmers(j_file, jmers, max_dist);
 
@@ -330,14 +323,10 @@ void vjf_search(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& 
 	print_windows(contig, windows);
 }
 
+/*
 void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist) {
 
 	init(v_file, j_file, max_dist);
-
-//	char match = matches_vmer(5205);
-//	printf("match1: %d\n", match);
-//	match = matches_vmer(3000000000);
-//	printf("match2: %d\n", match);
 
 	fprintf(stderr, "Processing contigs\n");
 	fflush(stderr);
@@ -370,6 +359,7 @@ void find_candidates(char* v_file, char* j_file, char* contig_file, int max_dist
 	fprintf(stderr, "Done");
 	fflush(stderr);
 }
+*/
 
 /*
 int main(int argc, char** argv) {

@@ -170,7 +170,7 @@ int compare_kmer(const char* s1, const char* s2) {
 
 struct struct_pool* init_pool() {
 
-	printf("Memory pool init start\n");
+	fprintf(stderr, "Memory pool init start\n");
 	fflush(stdout);
 	struct_pool* pool = (struct struct_pool*) malloc(sizeof(struct_pool));
 	pool->node_pool = (struct node_pool*) malloc(sizeof(node_pool));
@@ -186,7 +186,7 @@ struct struct_pool* init_pool() {
 	pool->read_pool->reads[0] = (char*) malloc(sizeof(char) * (read_length+1) * READS_PER_BLOCK);
 	pool->read_pool->block_idx = 0;
 	pool->read_pool->read_idx = 0;
-	printf("Memory pool init done\n");
+	fprintf(stderr, "Memory pool init done\n");
 	fflush(stdout);
 
 	return pool;
@@ -194,7 +194,7 @@ struct struct_pool* init_pool() {
 
 char* allocate_read(struct_pool* pool) {
 	if (pool->read_pool->block_idx > MAX_READ_BLOCKS) {
-		printf("READ BLOCK INDEX TOO BIG!!!!\n");
+		fprintf(stderr, "READ BLOCK INDEX TOO BIG!!!!\n");
 		exit(-1);
 	}
 
@@ -209,13 +209,13 @@ char* allocate_read(struct_pool* pool) {
 
 struct node* allocate_node(struct_pool* pool) {
 	if (pool->node_pool->block_idx >= MAX_NODE_BLOCKS) {
-		printf("NODE BLOCK INDEX TOO BIG!!!!\n");
+		fprintf(stderr, "NODE BLOCK INDEX TOO BIG!!!!\n");
 		exit(-1);
 	}
 
 	if (pool->node_pool->node_idx >= NODES_PER_BLOCK) {
-printf("Increasing node pool...\n");
-fflush(stdout);
+		fprintf(stderr, "Increasing node pool...\n");
+		fflush(stderr);
 		pool->node_pool->block_idx++;
 		pool->node_pool->node_idx = 0;
 		pool->node_pool->nodes[pool->node_pool->block_idx] = (struct node*) malloc(sizeof(struct node) * NODES_PER_BLOCK);
@@ -230,7 +230,6 @@ unsigned char phred33(char ch) {
 
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
 
-//	node* my_node = (node*) malloc(sizeof(node));
 	node* my_node = allocate_node(pool);
 	memset(my_node, 0, sizeof(node));
 	my_node->kmer = seq;
@@ -340,7 +339,7 @@ void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_
 				curr->root_eligible = has_roots;
 
 				if (curr == NULL) {
-					printf("Null node for kmer: %s\n", kmer);
+					fprintf(stderr, "Null node for kmer: %s\n", kmer);
 					exit(-1);
 				}
 
@@ -367,7 +366,7 @@ void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, 
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
 
-printf("input_len: %ld, record_len: %d\n", input_len, record_len);
+	printf(stderr, "input_len: %ld, record_len: %d\n", input_len, record_len);
 	size_t num_records = input_len / record_len;
 	size_t record = 0;
 	const char* ptr = input;
@@ -382,8 +381,8 @@ printf("input_len: %ld, record_len: %d\n", input_len, record_len);
 		} else if (ptr[0] == '1') {
 			strand = 1;
 		} else {
-			printf("Initial char in input invalid: %c\n", ptr[0]);
-			printf("ERROR!  INVALID INPUT:\n===========================%s\n===========================\n", input);
+			fprintf(stderr, "Initial char in input invalid: %c\n", ptr[0]);
+			fprintf(stderr, "ERROR!  INVALID INPUT:\n===========================%s\n===========================\n", input);
 			exit(-1);
 		}
 
@@ -400,50 +399,15 @@ printf("input_len: %ld, record_len: %d\n", input_len, record_len);
 		record++;
 
 		if ((record % 1000000) == 0) {
-			printf("record_count: %d\n", record);
+			fprintf(stderr, "record_count: %d\n", record);
 			fflush(stdout);
 		}
 	}
 
-	printf("Num reads: %d\n", record);
-	printf("Num nodes: %d\n", nodes->size());
-	fflush(stdout);
+	fprintf(stderr, "Num reads: %d\n", record);
+	fprintf(stderr, "Num nodes: %d\n", nodes->size());
+	fflush(stderr);
 }
-
-/*
-void build_graph(const char* read_file, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool) {
-	FILE *fp = fopen(read_file, "r");
-	char read[MAX_READ_LENGTH];
-	memset(read, 0, MAX_READ_LENGTH);
-
-	char qual[MAX_READ_LENGTH];
-	memset(qual, 0, MAX_READ_LENGTH);
-
-	char read_info[128];
-
-	int line = 0;
-	while (fscanf(fp, "%s", read_info) != EOF) {
-		fscanf(fp, "%s", read);
-		fscanf(fp, "%s", qual);
-		if (strcmp(read, "") != 0) {
-			char* read_ptr = allocate_read(pool);
-			memcpy(read_ptr, read, read_length+1);
-			int strand = atoi(read_info);
-			add_to_graph(read_ptr, nodes, pool, qual, strand);
-			line++;
-
-			if ((line % 100000) == 0) {
-				printf("Processed %d reads.\n", line);
-			}
-		}
-	}
-
-	printf("Num reads: %d\n", line);
-	printf("Num nodes: %d\n", nodes->size());
-
-	fclose(fp);
-}
-*/
 
 struct linked_node* remove_node_from_list(struct node* node, struct linked_node* list) {
 	struct linked_node* node_ptr = list;
@@ -599,7 +563,7 @@ void prune_low_frequency_edges(sparse_hash_map<const char*, struct node*, my_has
 		}
 	}
 
-	printf("Pruned %ld edges\n", removed_edge_count);
+	fprintf(stderr, "Pruned %ld edges\n", removed_edge_count);
 }
 
 void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, char isUnalignedRegion) {
@@ -616,7 +580,7 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 		}
 	}
 
-	printf("Remaining nodes after pruning step 1: %d\n", nodes->size());
+	fprintf(stderr, "Remaining nodes after pruning step 1: %d\n", nodes->size());
 
 	// Now go back through and ensure that each node reaches minimum frequency threshold.
 	int freq = min_node_freq;
@@ -627,12 +591,12 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 
 		if (increase_freq > 0) {
 			freq = freq + increase_freq;
-			printf("Increased mnf to: %d for nodes size: %d\n", freq, nodes->size());
+			fprintf(stderr, "Increased mnf to: %d for nodes size: %d\n", freq, nodes->size());
 		}
 	}
 
 	if (freq > 1) {
-                printf("Pruning nodes < frequency: %d\n", freq);
+        fprintf(stderr, "Pruning nodes < frequency: %d\n", freq);
 		for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 					 it != nodes->end(); ++it) {
 
@@ -645,7 +609,7 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 		}
 	}
 
-	printf("Remaining nodes after pruning step 2: %d\n", nodes->size());
+	fprintf(stderr, "Remaining nodes after pruning step 2: %d\n", nodes->size());
 
 	prune_low_frequency_edges(nodes);
 
@@ -661,40 +625,40 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 		}
 	}
 
-	printf("Remaining nodes after edge pruning: %d\n", nodes->size());
+	fprintf(stderr, "Remaining nodes after edge pruning: %d\n", nodes->size());
 
 }
 
 void print_kmer(char* kmer) {
     for (int i=0; i<kmer_size; i++) {
-            printf("%c", kmer[i]);
+    	fprintf(stderr, "%c", kmer[i]);
     }
 }
 
 void print_kmer(struct node* node) {
-	printf("%x\t", node);
+	fprintf(stderr, "%x\t", node);
     for (int i=0; i<kmer_size; i++) {
-            printf("%c", node->kmer[i]);
+    	printf(stderr, "%c", node->kmer[i]);
     }
 }
 
 void print_node(struct node* node) {
-        printf("kmer: ");
+        fprintf(stderr, "kmer: ");
         print_kmer(node);
-        printf("\tfrom: ");
+        fprintf(stderr, "\tfrom: ");
 
         struct linked_node* from = node->fromNodes;
         while (from != NULL) {
         	print_kmer(from->node);
-        	printf(",");
+        	fprintf(stderr, ",");
         	from = from->next;
         }
 
-        printf("\tto: ");
+        fprintf(stderr, "\tto: ");
         struct linked_node* to = node->toNodes;
         while (to != NULL) {
         	print_kmer(to->node);
-        	printf(",");
+        	fprintf(stderr, ",");
         	to = to->next;
         }
 }
@@ -728,9 +692,9 @@ int is_root(struct node* node, int& num_root_candidates) {
 				is_root = 1;
 				node->is_root = 1;
 
-				printf("ROOT_NODE:\t%d\t", node->frequency);
+				fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
 				print_kmer(node->kmer);
-				printf("\n");
+				fprintf(stderr, "\n");
 			}
 		} else {
 			// Identify nodes that point to themselves with no other incoming edges.
@@ -738,7 +702,7 @@ int is_root(struct node* node, int& num_root_candidates) {
 			struct linked_node* from = node->fromNodes;
 			if (from->next == NULL && (strncmp(node->kmer, from->node->kmer, kmer_size) == 0)) {
 //				is_root = 1;
-				printf("SELF_ROOT\n");
+				fprintf(stderr, "SELF_ROOT\n");
 			}
 		}
 	}
@@ -757,28 +721,20 @@ struct linked_node* identify_root_nodes(sparse_hash_map<const char*, struct node
 	         it != nodes->end(); ++it) {
 		struct node* node = it->second;
 
-//		if (node != NULL) {
-//			print_node(node);
-//		}
-
 		if (is_root(node, num_root_candidates)) {
 			struct linked_node* next = root_nodes;
 			root_nodes = (linked_node*) malloc(sizeof(linked_node));
 			root_nodes->node = node;
 			root_nodes->next = next;
 
-//			printf("\tROOT");
-
 			count++;
 		}
-
-//		printf("\n");
 	}
 
-	printf("num root nodes: %d\n", count);
+	fprintf(stderr, "num root nodes: %d\n", count);
 
-	printf("NUM_ROOT_CANDIDATES: %d\n", num_root_candidates);
-	fflush(stdout);
+	fprintf(stderr, "NUM_ROOT_CANDIDATES: %d\n", num_root_candidates);
+	fflush(stderr);
 
 	return root_nodes;
 }
@@ -800,10 +756,10 @@ void get_roots_from_marker(sparse_hash_map<const char*, struct node*, my_hash, e
 	stack<node_tracker*> node_stack;
 	node_stack.push(tracker);
 
-	printf("Track back start: ");
+	fprintf(stderr, "Track back start: ");
 	print_kmer(tracker->curr_node);
-	printf("\n");
-	fflush(stdout);
+	fprintf(stderr, "\n");
+	fflush(stderr);
 
 	while (!node_stack.empty()) {
 		node_tracker* curr = node_stack.top();
@@ -814,9 +770,9 @@ void get_roots_from_marker(sparse_hash_map<const char*, struct node*, my_hash, e
 		char is_repeat = it != curr->visited_nodes->end();
 
 		if (node_stack.size() > MAX_TRACEBACK_STACK_SIZE) {
-			printf("Traceback stack too big, skipping: ");
+			fprintf(stderr, "Traceback stack too big, skipping: ");
 			print_kmer(tracker->curr_node);
-			printf("\n");
+			fprintf(stderr, "\n");
 			fflush(stdout);
 			// Stop processing and clear stack
 			delete curr->visited_nodes;
@@ -831,20 +787,20 @@ void get_roots_from_marker(sparse_hash_map<const char*, struct node*, my_hash, e
 		} else if (is_repeat || tracker->distance > MAX_DISTANCE_FROM_MARKER) {
 			// Just drop this path
 			if (is_repeat) {
-				printf("Track back repeat: ");
+				fprintf(stderr, "Track back repeat: ");
 			} else {
-				printf("Track back marker distance exceeded: ");
+				fprintf(stderr, "Track back marker distance exceeded: ");
 			}
 			print_kmer(curr->curr_node);
-			printf("\n");
-			fflush(stdout);
+			fprintf(stderr, "\n");
+			fflush(stderr);
 			delete curr->visited_nodes;
 			free(curr);
 		} else if (curr->curr_node->fromNodes == NULL) {
-			printf("Track back root: ");
+			fprintf(stderr, "Track back root: ");
 			print_kmer(curr->curr_node);
-			printf("\n");
-			fflush(stdout);
+			fprintf(stderr, "\n");
+			fflush(stderr);
 
 			// We've reached a root, save it
 			pthread_mutex_lock(&marker_trackback_mutex);
@@ -880,14 +836,14 @@ void get_roots_from_marker(sparse_hash_map<const char*, struct node*, my_hash, e
 
 				tracker->curr_node = from->node;
 				node_stack.push(tracker);
-				printf("marker traceback pushing: ");
+				fprintf(stderr, "marker traceback pushing: ");
 				print_kmer(tracker->curr_node);
-				printf("\n");
+				fprintf(stderr, "\n");
 				from = from->next;
 			}
 
-			printf("marker traceback stack size: %d\n", node_stack.size());
-			fflush(stdout);
+			fprintf(stderr, "marker traceback stack size: %d\n", node_stack.size());
+			fflush(stderr);
 		}
 	}
 }
@@ -912,7 +868,7 @@ void* marker_thread(void* t) {
 
 struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
 
-	printf("Tracking back from markers\n");
+	fprintf(stderr, "Tracking back from markers\n");
 	fflush(stdout);
 
 	sparse_hash_map<const char*, struct node*, my_hash, eqstr> roots;
@@ -938,12 +894,12 @@ struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
 
 		int ret = pthread_create(&(threads[num_threads]), NULL, marker_thread, marker_info);
 		if (ret != 0) {
-			printf("Error creating thread 1: %d\n", ret);
-			fflush(stdout);
+			fprintf(stderr, "Error creating thread 1: %d\n", ret);
+			fflush(stderr);
 			exit(-1);
 		}
 
-		printf("Running threads: %d\n", running_threads);
+		fprintf(stderr, "Running threads: %d\n", running_threads);
 
 		num_threads++;
 
@@ -982,12 +938,12 @@ struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
 		curr->next = NULL;
 		curr->node = node;
 		count += 1;
-		printf("Adding source: %d\n", count);
+		fprintf(stderr, "Adding source: %d\n", count);
 		fflush(stdout);
 	}
 
-	printf("Marker trace back yields: %d root nodes\n", count);
-	fflush(stdout);
+	fprintf(stderr, "Marker trace back yields: %d root nodes\n", count);
+	fflush(stderr);
 
 	return source_nodes;
 }
@@ -1128,21 +1084,10 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			pthread_mutex_unlock(&contig_writer_mutex);
 
 			if (is_to_be_processed) {
-//				printf("A0\n");
-				fflush(stdout);
-//				printf("A1: [%s]\n", *it);
-				fflush(stdout);
-
 				vector<mapped_pair> mapped_reads;
 				vector<pair<int,int> > start_positions;
-//				printf("Before quick_map_process_contig\n");
-				fflush(stdout);
-
 
 				quick_map_process_contig(contig_id, (char*) *it, mapped_reads, start_positions);
-
-				printf("Contig id: [%s]\tmapped_reads: [%d]\t%s\n", contig_id, mapped_reads.size(), *it);
-				fflush(stdout);
 
 				int eval_start = 50;
 				int eval_stop  = 390;
@@ -1151,11 +1096,14 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				int insert_high = 175;
 				int floor = 2;
 
+				/*
 				char* str_debug = "GCTAAGAAGGCAGGGTCCTCAGTGAAGATTTCCTGTAAGGTTTCAGGATACATCTTCACCCACCGTTCCCTGCACTGGTTACGACAGGCCCCCGGACAAGCGCTTGAGTGGATGGGATGGATCACACCTTTCAATGGTAGCTCCAACTACGCACAGGAATTCCAGGAAGGAGTCACCATTACCAGGGACAGGTCTATGAGCACAGCCTGGATGGAGCTGAGCAGCATGAGATCTGAGGACACATCCATGTATTACTGTGCACCTGCAGCTTATGATTACGTTTGTGGGAGTTATGGGTATATCGACAACTGGATCGACCTCTGGGTCCAGGGAACCCTGGTCTCCGTGGCTTCACCCTCCACCATGGGCCCATCGGTCTTCCCCCTGGCACCCTCCTCCAAGAGCACCTCTGGGGGCACAGCAGCCCTGGGCTGCCTG";
 				char is_debug = 0;
 				if (strcmp(*it, str_debug) == 0) {
 					is_debug = 1;
 				}
+				*/
+				is_debug = 0;
 
 				char is_valid = coverage_is_valid(read_length, strlen(*it),
 						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
@@ -1164,21 +1112,14 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 					pthread_mutex_lock(&contig_writer_mutex);
 					vjf_windows.insert(*it);
 					pthread_mutex_unlock(&contig_writer_mutex);
-					printf("VALID contig: [%s]\n", *it);
-				} else {
-//					printf("INVALID contig: [%s]\n", *it);
+//					printf("VALID contig: [%s]\n", *it);
 				}
-
-				fflush(stdout);
 			}
 		}
-
-//		pthread_mutex_lock(&contig_writer_mutex);
-//		fprintf(stderr, buf);
-//		pthread_mutex_unlock(&contig_writer_mutex);
 	}
 }
 
+//TODO: Write windows to file
 void output_windows() {
 	int contig_num = 1;
 	for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
