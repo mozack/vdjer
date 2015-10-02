@@ -184,12 +184,6 @@ char contains_read(char* read) {
 }
 
 void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
-		vector<pair<int, int> >& start_positions) {
-
-	quick_map_process_contig(contig_id, contig, mapped_reads, start_positions, 0);
-}
-
-void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
 		vector<pair<int, int> >& start_positions, char should_output) {
 
 	int read1_count = 0;
@@ -265,6 +259,12 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 		map_info* m_info = it->second;
 		free(m_info);
 	}
+}
+
+void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
+		vector<pair<int, int> >& start_positions) {
+
+	quick_map_process_contig(contig_id, contig, mapped_reads, start_positions, 0);
 }
 
 void output_header(char* contig_file) {

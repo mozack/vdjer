@@ -35,8 +35,11 @@ extern char coverage_is_valid(int read_length, int contig_len, int eval_start, i
 		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads, vector<pair<int,int> >& start_positions, char is_debug);
 
 // quick_map3.c
-void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
+extern void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
 		vector<pair<int,int> >& start_positions);
+
+// quick_map3.c
+extern void quick_map_process_contig_file(char* contig_file);
 
 #define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
