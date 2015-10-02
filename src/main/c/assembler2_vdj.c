@@ -1132,7 +1132,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 void output_windows() {
 	int contig_num = 1;
 	for (dense_hash_set<const char*, contig_hash, contig_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
-		fprintf(stderr, ">vjf_%d\n%s\n", contig_num++, *it);
+		printf(stdout, ">vjf_%d\n%s\n", contig_num++, *it);
 	}
 }
 
