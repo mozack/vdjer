@@ -11,19 +11,26 @@ char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int
 		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads,
 		               vector<pair<int,int> >& start_positions, char is_debug) {
 
-	floor = 1;
+//s	floor = 1;
 	int num_reads = start_positions.size();
 	int begin_idx = 0;
 	int pos = eval_start;
 	char is_valid = 1;
 
-	while (pos+insert_high+read_length/2 < eval_stop && is_valid) {
+	int mate_low = 0;
+	int mate_high = 0;
+
+	while (mate_low < eval_stop && pos < eval_stop && is_valid) {
 		while(begin_idx<num_reads && start_positions[begin_idx].first+read_length-1 < pos) {
 			begin_idx += 1;
 		}
 
-		int mate_low = pos + insert_low - read_length/2;
-		int mate_high = pos + insert_high + read_length/2;
+		mate_low = pos + insert_low - read_length - read_length/2;
+		mate_high = pos + insert_high - read_length + read_length/2;
+
+		if (mate_high > eval_stop) {
+			mate_high = eval_stop+1;
+		}
 
 		int coverage[contig_len+1];
 		memset(coverage, 0, sizeof(int)*(contig_len+1));
