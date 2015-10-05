@@ -243,6 +243,21 @@ void add_to_buffer(bam1_t *b, char*& buf_ptr, int read_len, char read_num, char*
 	add_read_info(read_id, seq_ptr, quals_ptr, read_num, !bam_is_rev(b));
 }
 
+#define READ_BUF_BLOCK 100000000
+
+char* advance_read_buf_ptr(char* &read_buf, char* &read_buf_ptr, int length) {
+
+	// If we're close to the end of the read buf, allocate anew
+	if (read_buf_ptr - read_buf > READ_BUF_BLOCK-256-length) {
+		read_buf = (char*) calloc(READ_BUF_BLOCK, sizeof(char));
+		read_buf_ptr = read_buf;
+	} else {
+		read_buf_ptr += length+1;
+	}
+
+	return read_buf_ptr;
+}
+
 void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char*& primary_buf, char*& secondary_buf) {
 
@@ -260,7 +275,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	load_kmers(vdj_fasta);
 
 	// TODO: Max buffer size??
-	char* read_name_buf = (char*) calloc(100000000, sizeof(char));
+	char* read_name_buf = (char*) calloc(READ_BUF_BLOCK, sizeof(char));
 	char* read_name_buf_ptr = read_name_buf;
     bam_info bam;
     bam_open(bam_file, &bam);
@@ -275,7 +290,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		if (!contains_str(primary_reads, qname)) {
 			strncpy(read_name_buf_ptr, qname, strlen(qname));
 			primary_reads.insert(read_name_buf_ptr);
-			read_name_buf_ptr += strlen(qname)+1;
+			advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 		}
 	}
 
@@ -292,7 +307,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		if (!contains_str(secondary_reads, qname)) {
 			strncpy(read_name_buf_ptr, qname, strlen(qname));
 			secondary_reads.insert(read_name_buf_ptr);
-			read_name_buf_ptr += strlen(qname)+1;
+			advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 		}
 	}
 
@@ -316,12 +331,13 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 					if (!contains_str(primary_reads, qname)) {
 						strncpy(read_name_buf_ptr, qname, strlen(qname));
 						primary_reads.insert(read_name_buf_ptr);
-						read_name_buf_ptr += strlen(qname)+1;
+						advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 					}
-				} else if (!contains_str(secondary_reads, qname)) {
+				}
+				else if (!contains_str(secondary_reads, qname)) {
 					strncpy(read_name_buf_ptr, qname, strlen(qname));
 					secondary_reads.insert(read_name_buf_ptr);
-					read_name_buf_ptr += strlen(qname)+1;
+					advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 				}
 			}
 		}
