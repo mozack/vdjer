@@ -19,7 +19,7 @@ using google::sparse_hash_map;
 
 // Global from assembler2_vdj.c
 extern int read_length;
-int READ_LEN = read_length;
+int READ_LEN = 0;
 int MIN_INSERT = 50;
 int MAX_INSERT = 400;
 
@@ -59,6 +59,7 @@ char* qual_buf_start;
 sparse_hash_map<const char*, struct read_vec*, qm_hash, qm_eqstr>* reads = new sparse_hash_map<const char*, struct read_vec*, qm_hash, qm_eqstr>();
 
 void quick_map_init() {
+	READ_LEN = read_length;
 	reads->set_deleted_key(NULL);
 }
 
