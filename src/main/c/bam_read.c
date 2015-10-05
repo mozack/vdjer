@@ -251,6 +251,7 @@ char* advance_read_buf_ptr(char* &read_buf, char* &read_buf_ptr, int length) {
 	if (read_buf_ptr - read_buf > READ_BUF_BLOCK-256-length) {
 		read_buf = (char*) calloc(READ_BUF_BLOCK, sizeof(char));
 		read_buf_ptr = read_buf;
+		fprintf(stderr, "Increasing read_name buf");
 	} else {
 		read_buf_ptr += length+1;
 	}
@@ -296,7 +297,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 
 	hts_itr_destroy(iter);
 
-	fprintf(stderr, "primary_reads size: [%d]\n", primary_reads.size());
+	fprintf(stderr, "primary_reads size1: [%d]\n", primary_reads.size());
 
 	// Cache constant read names
 	hts_itr_t *iter2 = sam_itr_querys(bam.idx, bam.header, c_region);
@@ -310,6 +311,8 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 			advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 		}
 	}
+
+	fprintf(stderr, "secondary_reads size1: [%d]\n", secondary_reads.size());
 
 	hts_itr_destroy(iter2);
 	int read_len = 0;
@@ -397,6 +400,9 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 			}
 		}
 	}
+
+	fprintf(stderr, "primary_output1: [%d] primary_output2: [%d] secondary_output1: [%d] secondary_output2: [%d]\n",
+			primary_output1.size(), primary_output2.size(), secondary_output1.size(), secondary_output2.size());
 
 	bam_destroy1(b);
 	bam_close(&bam);
