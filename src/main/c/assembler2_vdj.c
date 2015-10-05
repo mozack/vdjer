@@ -1069,10 +1069,13 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			strcat(buf, contig->seq);
 		}
 
+
 		// Search for V / J anchors and add to hash set.
 		dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
 		vjf_windows_temp.set_empty_key(NULL);
 		vjf_search(buf, vjf_windows_temp);
+
+//		fprintf(stderr, "CONTIG_CANDIDATE: %s\t%d\n", buf, vjf_windows_temp.size());
 
 		for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows_temp.begin(); it!=vjf_windows_temp.end(); it++) {
 			char is_to_be_processed = 0;
@@ -1096,7 +1099,8 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				if ((contig_num % 1000) == 0) {
 					fprintf(stderr, "Processing contig num: %d\n", contig_num);
 				}
-//				fprintf(stderr, ">%s\n%s\n", contig_id, *it);
+
+//				fprintf(stderr, "PROCESS_CONTIG: %s\t%s\n", contig_id, *it);
 			}
 			pthread_mutex_unlock(&contig_writer_mutex);
 
@@ -1119,7 +1123,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
 
 				if (is_valid) {
-					//fprintf(stderr, "VALID contig: [%s]\n", *it);
+//					fprintf(stderr, "VALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 
 					// Truncate assembled contig at eval stop
 					((char*)(*it))[eval_start+CONTIG_SIZE-1] = '\0';
@@ -1128,6 +1132,8 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 					pthread_mutex_lock(&contig_writer_mutex);
 					vjf_windows.insert(((char*) *it) + (eval_start-1));
 					pthread_mutex_unlock(&contig_writer_mutex);
+				} else {
+//					fprintf(stderr, "INVALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 				}
 			}
 		}
@@ -1983,6 +1989,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	int read_len = atoi(argv[4]);
+	read_length = read_len;
 
 	MIN_CONTIG_SCORE = atof(argv[5]);
 

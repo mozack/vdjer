@@ -17,8 +17,9 @@ using google::sparse_hash_map;
 //int MIN_INSERT = 180 - 60; // 120
 //int MAX_INSERT = 180 + 60; // 240
 
-//TODO: Do not hardcode
-int READ_LEN = 50;
+// Global from assembler2_vdj.c
+extern int read_length;
+int READ_LEN = read_length;
 int MIN_INSERT = 50;
 int MAX_INSERT = 400;
 
@@ -227,6 +228,7 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 				if (insert >= MIN_INSERT && insert <= MAX_INSERT) {
 					// We have a hit.  Output
 					mapped_pair read_pair;
+					read_pair.contig_id = contig_id;
 					read_pair.r1 = r1->info;
 					read_pair.r2 = r2->info;
 					read_pair.pos1 = r1->pos;
