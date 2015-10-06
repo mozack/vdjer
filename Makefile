@@ -9,7 +9,7 @@ samtools:
 	$(MAKE) -C $(SAMTOOLS)
 
 vdj:	samtools
-	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I$(SAMTOOLS) -I$(HTSLIB)  $(SRCDIR)/assembler2_vdj.c $(SRCDIR)/seq_score.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c $(SRCDIR)/hash_utils.c $(SRCDIR)/bam_read.c $(SRCDIR)/quick_map3.c $(SRCDIR)/coverage.c  $(SAMTOOLS)/libbam.a $(HTSLIB)/libhts.a -lz -lpthread -o vdj
+	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I$(SAMTOOLS) -I$(HTSLIB)  $(SRCDIR)/assembler2_vdj.c $(SRCDIR)/seq_score.c $(SRCDIR)/vj_filter.c $(SRCDIR)/seq_to_kmer.c $(SRCDIR)/hash_utils.c $(SRCDIR)/bam_read.c $(SRCDIR)/quick_map3.c $(SRCDIR)/coverage.c $(SRCDIR)/status.c  $(SAMTOOLS)/libbam.a $(HTSLIB)/libhts.a -lz -lpthread -o vdj
 
 vdjg:
 	g++ -g -pthread -I$(SRCDIR) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $(SRCDIR)/assembler2_vdj_greedy.c $(SRCDIR)/seq_score.c -o vdjg
