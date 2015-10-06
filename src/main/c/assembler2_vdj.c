@@ -45,6 +45,7 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
 #define MAX_READ_LENGTH 1001
+#define MAX_FRAGMENT_SIZE 100
 //#define MIN_BASE_QUALITY 20
 #define INCREASE_MIN_NODE_FREQ_THRESHOLD 2500
 
@@ -955,6 +956,8 @@ struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
 	fprintf(stderr, "Marker trace back yields: %d root nodes\n", count);
 	fflush(stderr);
 
+
+
 	return source_nodes;
 }
 
@@ -977,10 +980,10 @@ struct contig* new_contig() {
 	curr_contig = (contig*) calloc(1, sizeof(contig));
 //	printf("seq size: %d\n", sizeof(curr_contig->seq));
 //	memset(curr_contig->seq, 0, sizeof(curr_contig->seq));
-	curr_contig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
+	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
-	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(MAX_CONTIG_SIZE);
+	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
@@ -997,12 +1000,12 @@ struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_c
 		all_contig_fragments[num_fragments++] = orig->seq;
 
 		//TODO: Use smaller fragment block here.
-		orig->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
+		orig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 		orig->size = 0;  // Reset index (not really size)
 	}
 
 	struct contig* copy = (contig*) calloc(sizeof(contig), sizeof(char));
-	copy->seq = (char*) calloc(MAX_CONTIG_SIZE, sizeof(char));
+	copy->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 
 	// Copy original fragments to new contig
 	copy->fragments = new vector<char*>(*(orig->fragments));
@@ -1011,7 +1014,7 @@ struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_c
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
 //	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
-	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(MAX_CONTIG_SIZE);
+	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
 	copy->score = orig->score;
 
 	return copy;
@@ -1172,6 +1175,32 @@ void output_windows() {
 
 #define SINK "CACACAGCCCCCAACATGCATGCTT"
 
+void append_to_contig(struct contig* contig, int& num_fragments, char** all_contig_fragments, char entire_kmer) {
+	int add_len = 1;
+	if (entire_kmer) {
+		add_len = kmer_size;
+	}
+
+	if (contig->size+add_len < MAX_FRAGMENT_SIZE) {
+		contig->fragments->push_back(contig->seq);
+
+		// track fragments for cleanup later
+		all_contig_fragments[num_fragments++] = contig->seq;
+
+		contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
+		contig->size = 0;  // Reset index (not really size)
+	}
+
+	if (!entire_kmer) {
+		contig->seq[contig->size++] = contig->curr_node->kmer[0];
+		contig->real_size += 1;
+	} else {
+		strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
+		contig->size += kmer_size;
+		contig->real_size += kmer_size;
+	}
+}
+
 int build_contigs(
 		struct node* root,
 		int& contig_count,
@@ -1224,7 +1253,9 @@ int build_contigs(
 		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size-1)) {
 			// We've reached the end of the contig.
 			// Append entire current node.
-			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
+			append_to_contig(contig, num_fragments, all_contig_fragments, 1);
+//			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
+//			contig->real_size += kmer_size;
 
 			// Now, write the contig
 			if (!shadow_mode) {
@@ -1239,8 +1270,9 @@ int build_contigs(
 		}
 		else {
 			// Append first base from current node
-			contig->seq[contig->size++] = contig->curr_node->kmer[0];
-			contig->real_size += 1;
+			append_to_contig(contig, num_fragments, all_contig_fragments, 0);
+//			contig->seq[contig->size++] = contig->curr_node->kmer[0];
+//			contig->real_size += 1;
 
 			contig->visited_nodes->insert(contig->curr_node->kmer);
 
@@ -1701,6 +1733,7 @@ char* assemble(const char* input,
 			  const char* bcr_fasta) {
 
 
+	fprintf(stderr, "Assembling...\n");
 	read_length = input_read_length;
 
 //	min_contig_length = read_length + 1;
@@ -1911,7 +1944,12 @@ char* assemble(const char* input,
 		fprintf(stderr, "What!!?? %d : %d\n", kmer_size, input_kmer_size);
 	}
 	assert(kmer_size == input_kmer_size);
+
+	print_status("FINIS");
+
 	fprintf(stderr, "Done assembling(%ld): %s, %d\n", (stopTime-startTime), output, contig_count);
+
+//	fprintf(stderr, "Done\n");
 
 	if (status == OK || status == TOO_MANY_PATHS_FROM_ROOT) {
 		return contig_str;
@@ -1922,6 +1960,9 @@ char* assemble(const char* input,
 		strcpy(contig_str, "<ERROR>");
 		return contig_str;
 	}
+
+
+
 }
 
 /*
