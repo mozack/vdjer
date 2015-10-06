@@ -63,7 +63,7 @@ extern void quick_map_process_contig_file(char* contig_file);
 //#define MIN_HOMOLOGY_SCORE 13
 
 // TODO: This is used to bound qual sum arrays.  Use a memory pool instead for this.
-#define MAX_KMER_LEN 201
+#define MAX_KMER_LEN 50
 
 // This makes sense for small assembly windows, but should be parameterized for larger assemblies
 #define MAX_NODES 900000000
@@ -297,7 +297,7 @@ void increment_node_freq(struct node* node, char* read_seq, int strand, char* km
 
 	for (int i=0; i<kmer_size; i++) {
 		unsigned char phred33_qual = phred33(kmer_qual[i]);
-		if ((node->qual_sums[i] + phred33_qual) < MAX_QUAL_SUM) {
+		if ((node->qual_sums[i] + phred33_qual) < MAX_QUAL_SUM-41) {
 			node->qual_sums[i] += phred33_qual;
 		} else {
 			node->qual_sums[i] = MAX_QUAL_SUM;
