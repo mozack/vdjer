@@ -433,10 +433,10 @@ struct linked_node* remove_node_from_list(struct node* node, struct linked_node*
 			// Free linked_node
 			free(node_ptr);
 			is_found = true;
+		} else {
+			prev_ptr = node_ptr;
+			node_ptr = node_ptr->next;
 		}
-
-		prev_ptr = node_ptr;
-		node_ptr = node_ptr->next;
 	}
 
 	return list;
@@ -726,7 +726,7 @@ struct linked_node* identify_root_nodes(sparse_hash_map<const char*, struct node
 
 	struct linked_node* root_nodes = NULL;
 	int count = 0;
-	int num_root_candidates;
+	int num_root_candidates = 0;
 
 	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 	         it != nodes->end(); ++it) {
@@ -1347,7 +1347,7 @@ void* worker_thread(void* t) {
 
 		struct node* source = root->node;
 
-		int contig_count;
+		int contig_count = 0;
 		const char* prefix = "foo";
 		int max_paths_from_root = 500000000;
 		int max_contigs = 50000000;
