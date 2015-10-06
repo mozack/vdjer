@@ -16,6 +16,7 @@
 #include <sparsehash/dense_hash_set>
 #include <stdexcept>
 //#include "abra_NativeAssembler.h"
+#include "status.h"
 #include "seq_score.h"
 #include "hash_utils.h"
 #include "vj_filter.h"
@@ -1726,16 +1727,20 @@ char* assemble(const char* input,
 
 	build_graph2(input, nodes, pool, 1);
 
+	print_status("POST_BUILD_GRAPH1");
+
 	char isUnalignedRegion = !truncate_on_repeat;
 	fprintf(stderr, "Prune graph 1...\n");
 	fflush(stdout);
 	prune_graph(nodes, isUnalignedRegion);
+	print_status("POST_PRUNE_GRAPH1");
 
 	struct linked_node* root_nodes = NULL;
 	root_nodes = identify_root_nodes(nodes);
 
 	if (unaligned_input != NULL) {
 		build_graph2(unaligned_input, nodes, pool, 0);
+		print_status("POST_BUILD_GRAPH2");
 	}
 
 	int status = -1;
@@ -1752,6 +1757,8 @@ char* assemble(const char* input,
 	prune_graph(nodes, isUnalignedRegion);
 	fprintf(stderr, "Prune graph 2 Done...\n");
 	fflush(stdout);
+
+	print_status("POST_PRUNE_GRAPH2");
 
 	dump_graph(nodes, "graph.txt");
 
@@ -1856,7 +1863,10 @@ char* assemble(const char* input,
 		if ((num_roots % 10) == 0) {
 			fprintf(stderr, "Processed %d root nodes\n", num_roots);
 			fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
+			fprintf(stderr, "Window candidate size: %d\n", vjf_window_candidates.size());
 			fflush(stdout);
+			print_status("STATUS_UPDATE");
+
 		}
 	}
 
@@ -1974,6 +1984,8 @@ char* load_file(const char* filename) {
 
 int main(int argc, char* argv[]) {
 
+	print_status("START");
+
 	char* input_file = argv[1];
 	char* unaligned_input_file = NULL;
 
@@ -2016,6 +2028,8 @@ int main(int argc, char* argv[]) {
 	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
 			vjf_j_conserved, vjf_window_span, vjf_j_extension);
 
+	print_status("POST_VJF_INIT");
+
 //	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1.b.reads");
 //	char* unaligned_input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1_unaligned.c.reads");
 
@@ -2036,6 +2050,8 @@ int main(int argc, char* argv[]) {
 	extract(bam_file, vdj_fasta, v_region, c_region, input, unaligned_input);
 	fprintf(stderr, "Read extract done...\n");
 	fflush(stdout);
+
+	print_status("POST_READ_EXTRACT");
 
 //	char* input = load_file(input_file);
 //	char* unaligned_input = NULL;
