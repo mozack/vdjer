@@ -118,6 +118,7 @@ int min_base_quality;
 float MIN_CONTIG_SCORE;
 
 int CONTIG_SIZE;
+int INSERT_LEN;
 
 struct struct_pool {
 //	struct node_pool* node_pool;
@@ -1097,8 +1098,10 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			int eval_start = 50;
 			int eval_stop  = 390;
 			int read_span  = 35;
-			int insert_low = 175;
-			int insert_high = 175;
+//			int insert_low = 175;
+//			int insert_high = 175;
+			int insert_low = INSERT_LEN;
+			int insert_high = INSERT_LEN;
 			int floor = 2;
 
 			// TODO: Use RW lock here?
@@ -2076,6 +2079,7 @@ int main(int argc, char* argv[]) {
 	char* vdj_fasta = argv[16];
 	char* v_region = argv[17];
 	char* c_region = argv[18];
+	INSERT_LEN = atoi(argv[19]);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
