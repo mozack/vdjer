@@ -1886,6 +1886,8 @@ char* assemble(const char* input,
 		usleep(10*1000);
 	}
 
+	print_status("THREADS_DONE");
+
 	pthread_mutex_destroy(&running_thread_mutex);
 	pthread_mutex_destroy(&contig_writer_mutex);
 	pthread_mutex_destroy(&marker_trackback_mutex);
@@ -1898,9 +1900,10 @@ char* assemble(const char* input,
 
 //	write_graph(nodes);
 
+	print_status("PRE_CLEANUP");
 	cleanup(nodes, pool);
-
 	delete nodes;
+	print_status("POST_CLEANUP");
 
 	long stopTime = time(NULL);
 
