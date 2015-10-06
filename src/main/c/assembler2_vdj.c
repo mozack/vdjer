@@ -119,26 +119,26 @@ float MIN_CONTIG_SCORE;
 int CONTIG_SIZE;
 
 struct struct_pool {
-	struct node_pool* node_pool;
-	struct read_pool* read_pool;
+//	struct node_pool* node_pool;
+//	struct read_pool* read_pool;
 };
 
-#define NODES_PER_BLOCK 5000000
-#define MAX_NODE_BLOCKS 50000
-#define READS_PER_BLOCK 1000000
-#define MAX_READ_BLOCKS 100000
+//#define NODES_PER_BLOCK 5000000
+//#define MAX_NODE_BLOCKS 50000
+//#define READS_PER_BLOCK 1000000
+//#define MAX_READ_BLOCKS 100000
 
-struct node_pool {
-	struct node** nodes;
-	int block_idx;
-	int node_idx;
-};
-
-struct read_pool {
-	char** reads;
-	int block_idx;
-	int read_idx;
-};
+//struct node_pool {
+//	struct node** nodes;
+//	int block_idx;
+//	int node_idx;
+//};
+//
+//struct read_pool {
+//	char** reads;
+//	int block_idx;
+//	int read_idx;
+//};
 
 struct node {
 
@@ -170,6 +170,7 @@ int compare_kmer(const char* s1, const char* s2) {
 	return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, kmer_size) == 0);
 }
 
+/*
 struct struct_pool* init_pool() {
 
 	fprintf(stderr, "Memory pool init start\n");
@@ -225,6 +226,7 @@ struct node* allocate_node(struct_pool* pool) {
 
 	return &pool->node_pool->nodes[pool->node_pool->block_idx][pool->node_pool->node_idx++];
 }
+*/
 
 unsigned char phred33(char ch) {
 	return ch - '!';
@@ -232,8 +234,9 @@ unsigned char phred33(char ch) {
 
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
 
-	node* my_node = allocate_node(pool);
-	memset(my_node, 0, sizeof(node));
+//	node* my_node = allocate_node(pool);
+	node* my_node = (node*) calloc(1, sizeof(struct node));
+//	memset(my_node, 0, sizeof(node));
 	my_node->kmer = seq;
 //	strcpy(my_node->contributingRead, contributingRead);
 	my_node->contributingRead = contributingRead;
@@ -390,11 +393,11 @@ void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, 
 
 		// TODO: skip copying the input read.  Downstream code appears to depend
 		// upon null terminator.
-		char* read_ptr = allocate_read(pool);
-		memset(read_ptr, 0, read_length+1);
-		memcpy(read_ptr, &(ptr[1]), read_length);
+//		char* read_ptr = allocate_read(pool);
+//		memset(read_ptr, 0, read_length+1);
+//		memcpy(read_ptr, &(ptr[1]), read_length);
 
-//		char* read_ptr = (char*) &(ptr[1]);
+		char* read_ptr = (char*) &(ptr[1]);
 
 		char* qual_ptr = (char*) &(ptr[read_length+1]);
 		add_to_graph(read_ptr, nodes, pool, qual_ptr, strand, has_roots);
@@ -483,6 +486,8 @@ void remove_node_and_cleanup(const char* key, struct node* node, sparse_hash_map
 		node->toNodes = NULL;
 		cleanup(node->fromNodes);
 		node->fromNodes = NULL;
+
+		free(node);
 	}
 }
 
@@ -629,6 +634,9 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 
 	fprintf(stderr, "Remaining nodes after edge pruning: %d\n", nodes->size());
 
+	fprintf(stderr, "Resizing node map\n");
+	nodes->resize(0);
+	fprintf(stderr, "Resizing node map done\n");
 }
 
 void print_kmer(char* kmer) {
@@ -1622,24 +1630,25 @@ void cleanup(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, 
 		if (node != NULL) {
 			cleanup(node->toNodes);
 			cleanup(node->fromNodes);
+			free(node);
 		}
 	}
 
-	for (int i=0; i<=pool->node_pool->block_idx; i++) {
-		free(pool->node_pool->nodes[i]);
-	}
-
-	free(pool->node_pool->nodes);
-	free(pool->node_pool);
-
-	for (int i=0; i<=pool->read_pool->block_idx; i++) {
-		free(pool->read_pool->reads[i]);
-	}
-
-	free(pool->read_pool->reads);
-	free(pool->read_pool);
-
-	free(pool);
+//	for (int i=0; i<=pool->node_pool->block_idx; i++) {
+//		free(pool->node_pool->nodes[i]);
+//	}
+//
+//	free(pool->node_pool->nodes);
+//	free(pool->node_pool);
+//
+//	for (int i=0; i<=pool->read_pool->block_idx; i++) {
+//		free(pool->read_pool->reads[i]);
+//	}
+//
+//	free(pool->read_pool->reads);
+//	free(pool->read_pool);
+//
+//	free(pool);
 }
 
 void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
@@ -1711,7 +1720,8 @@ char* assemble(const char* input,
 //	init_root_scoring(bcr_fasta, kmer_size);
 //	printf("Init root scoring done\n");
 
-	struct struct_pool* pool = init_pool();
+//	struct struct_pool* pool = init_pool();
+	struct struct_pool* pool = NULL;
 	sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new sparse_hash_map<const char*, struct node*, my_hash, eqstr>();
 
 	long startTime = time(NULL);
