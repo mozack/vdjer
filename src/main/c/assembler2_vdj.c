@@ -173,64 +173,6 @@ int compare_kmer(const char* s1, const char* s2) {
 	return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, kmer_size) == 0);
 }
 
-/*
-struct struct_pool* init_pool() {
-
-	fprintf(stderr, "Memory pool init start\n");
-	fflush(stdout);
-	struct_pool* pool = (struct struct_pool*) malloc(sizeof(struct_pool));
-	pool->node_pool = (struct node_pool*) malloc(sizeof(node_pool));
-	// Allocate array of arrays
-	pool->node_pool->nodes = (struct node**) malloc(sizeof(struct node*) * MAX_NODE_BLOCKS);
-	// Allocate first array of nodes
-	pool->node_pool->nodes[0] = (struct node*) malloc(sizeof(struct node) * NODES_PER_BLOCK);
-	pool->node_pool->block_idx = 0;
-	pool->node_pool->node_idx = 0;
-
-	pool->read_pool = (struct read_pool*) malloc(sizeof(read_pool));
-	pool->read_pool->reads = (char**) malloc(sizeof(char*) * MAX_READ_BLOCKS);
-	pool->read_pool->reads[0] = (char*) malloc(sizeof(char) * (read_length+1) * READS_PER_BLOCK);
-	pool->read_pool->block_idx = 0;
-	pool->read_pool->read_idx = 0;
-	fprintf(stderr, "Memory pool init done\n");
-	fflush(stdout);
-
-	return pool;
-}
-
-char* allocate_read(struct_pool* pool) {
-	if (pool->read_pool->block_idx > MAX_READ_BLOCKS) {
-		fprintf(stderr, "READ BLOCK INDEX TOO BIG!!!!\n");
-		exit(-1);
-	}
-
-	if (pool->read_pool->read_idx >= READS_PER_BLOCK) {
-		pool->read_pool->block_idx++;
-		pool->read_pool->read_idx = 0;
-		pool->read_pool->reads[pool->read_pool->block_idx] = (char*) malloc(sizeof(char) * (read_length+1) * READS_PER_BLOCK);
-	}
-
-	return &pool->read_pool->reads[pool->read_pool->block_idx][pool->read_pool->read_idx++ * (read_length+1)];
-}
-
-struct node* allocate_node(struct_pool* pool) {
-	if (pool->node_pool->block_idx >= MAX_NODE_BLOCKS) {
-		fprintf(stderr, "NODE BLOCK INDEX TOO BIG!!!!\n");
-		exit(-1);
-	}
-
-	if (pool->node_pool->node_idx >= NODES_PER_BLOCK) {
-		fprintf(stderr, "Increasing node pool...\n");
-		fflush(stderr);
-		pool->node_pool->block_idx++;
-		pool->node_pool->node_idx = 0;
-		pool->node_pool->nodes[pool->node_pool->block_idx] = (struct node*) malloc(sizeof(struct node) * NODES_PER_BLOCK);
-	}
-
-	return &pool->node_pool->nodes[pool->node_pool->block_idx][pool->node_pool->node_idx++];
-}
-*/
-
 unsigned char phred33(char ch) {
 	return ch - '!';
 }
@@ -935,9 +877,6 @@ struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
 	return source_nodes;
 }
 
-
-
-//TODO: Order these...
 struct contig {
 	char* seq;
 	vector<char*>* fragments;
@@ -1084,8 +1023,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			int eval_start = 50;
 			int eval_stop  = 390;
 			int read_span  = 35;
-//			int insert_low = 175;
-//			int insert_high = 175;
 			int insert_low = INSERT_LEN;
 			int insert_high = INSERT_LEN;
 			int floor = FILTER_READ_FLOOR;
@@ -1200,8 +1137,6 @@ int build_contigs(
 
 	int paths_from_root = 1;
 
-	int all_contigs_len = 0;
-
 	while ((contigs.size() > 0) && (status == OK)) {
 		// Get contig from stack
 		struct contig* contig = contigs.top();
@@ -1213,9 +1148,6 @@ int build_contigs(
 			// We've encountered a repeat
 			contig->is_repeat = 1;
 			if ((!shadow_mode) && (!stop_on_repeat)) {
-				// Add length of contig + padding for prefix
-				all_contigs_len += strlen(contig->seq) + 100;
-
 				output_contig(contig, contig_count, prefix, contig_str);
 				free_contig(contig);
 			} else {
@@ -1233,7 +1165,6 @@ int build_contigs(
 
 			// Now, write the contig
 			if (!shadow_mode) {
-				all_contigs_len += strlen(contig->seq) + 100;
 				// only output at sink node
 				output_contig(contig, contig_count, prefix, contig_str);
 				free_contig(contig);
