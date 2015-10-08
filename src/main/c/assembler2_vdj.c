@@ -79,11 +79,10 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MIN_ROOT_HOMOLOGY_SCORE 16
 
 // Must be greater than the number of  source(root) nodes - TODO: re-use threads and allocate dynamically.
-#define MAX_THREADS 100000
+#define MAX_THREADS 1000000
 
 #define MAX_NODE_VISITS 5
 
-// TODO: Parameterize
 int MAX_RUNNING_THREADS;
 
 pthread_mutex_t running_thread_mutex;
@@ -237,11 +236,8 @@ unsigned char phred33(char ch) {
 
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
 
-//	node* my_node = allocate_node(pool);
 	node* my_node = (node*) calloc(1, sizeof(struct node));
-//	memset(my_node, 0, sizeof(node));
 	my_node->kmer = seq;
-//	strcpy(my_node->contributingRead, contributingRead);
 	my_node->contributingRead = contributingRead;
 	my_node->frequency = 1;
 	my_node->hasMultipleUniqueReads = 0;
@@ -288,8 +284,6 @@ void link_nodes(struct node* from_node, struct node* to_node) {
 void increment_node_freq(struct node* node, char* read_seq, int strand, char* kmer_qual) {
 	if (node->frequency < MAX_FREQUENCY-1) {
 		node->frequency++;
-	} else {
-//		printf("Max frequency reached for: %s\n", node->kmer);
 	}
 
 	if (!(node->hasMultipleUniqueReads) &&
@@ -319,8 +313,6 @@ int include_kmer(char* sequence, char*qual, int idx) {
 		}
 
 		// Discard kmers with low base qualities
-
-//		if (qual[i] - '!' < min_base_quality) {
 		if (phred33(qual[i]) < MIN_BASE_QUALITY) {
 			include = 0;
 			break;
@@ -393,12 +385,6 @@ void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, 
 			fprintf(stderr, "ERROR!  INVALID INPUT:\n===========================%s\n===========================\n", input);
 			exit(-1);
 		}
-
-		// TODO: skip copying the input read.  Downstream code appears to depend
-		// upon null terminator.
-//		char* read_ptr = allocate_read(pool);
-//		memset(read_ptr, 0, read_length+1);
-//		memcpy(read_ptr, &(ptr[1]), read_length);
 
 		char* read_ptr = (char*) &(ptr[1]);
 
@@ -676,31 +662,16 @@ void print_node(struct node* node) {
         }
 }
 
-//#define SOURCE "AAACGGGCCGTTTGCATTGTGAACT"
-#define SOURCE "GGGGCAGCAAGATGGTGTTGCAGACCCAGGT"
 
 int num_root_candidates = 0;
 
 int is_root(struct node* node, int& num_root_candidates) {
 	int is_root = 0;
 
-//	return node != NULL && strncmp(node->kmer, SOURCE, kmer_size) == 0;
-
 	if (node != NULL && node->root_eligible) {
 		if (node->fromNodes == NULL) {
 			num_root_candidates += 1;
-/*
-			int homology_score = score_seq(node->kmer);
-			printf("HOMOLOGY_SCORE:\t%d\t%d\t", homology_score, node->frequency);
-			print_kmer(node->kmer);
-			printf("\n");
-			if (homology_score >= MIN_ROOT_HOMOLOGY_SCORE) {
-				is_root = 1;
-			}
-*/
 			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node)) {
-//			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node) &&
-//					(strncmp(node->kmer, "CGCACCATCTCCAAGGACACCTCCA", kmer_size) == 0) ) {
 
 				is_root = 1;
 				node->is_root = 1;
@@ -980,8 +951,6 @@ struct contig {
 struct contig* new_contig() {
 	struct contig* curr_contig;
 	curr_contig = (contig*) calloc(1, sizeof(contig));
-//	printf("seq size: %d\n", sizeof(curr_contig->seq));
-//	memset(curr_contig->seq, 0, sizeof(curr_contig->seq));
 	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
@@ -1023,7 +992,7 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 
 void free_contig(struct contig* contig) {
 	delete contig->visited_nodes;
-	delete contig->fragments; // TODO: Indiviual fragments need to be freed!
+	delete contig->fragments;
 	free(contig->seq);
 	free(contig);
 }
@@ -1088,12 +1057,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 		output_contigs += 1;
 		contig_count++;
 
-//		if (contig->is_repeat) {
-//			sprintf(buf, ">%s_%d_%f_repeat\n", prefix, output_contigs, contig->score);
-//		} else {
-//			sprintf(buf, ">%s_%d_%f\n", prefix, output_contigs, contig->score);
-//		}
-
 		buf[0] = '\0';
 
 		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
@@ -1147,13 +1110,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 				quick_map_process_contig(contig_id, (char*) *it, mapped_reads, start_positions);
 
-				/*
-				char* str_debug = "GCTAAGAAGGCAGGGTCCTCAGTGAAGATTTCCTGTAAGGTTTCAGGATACATCTTCACCCACCGTTCCCTGCACTGGTTACGACAGGCCCCCGGACAAGCGCTTGAGTGGATGGGATGGATCACACCTTTCAATGGTAGCTCCAACTACGCACAGGAATTCCAGGAAGGAGTCACCATTACCAGGGACAGGTCTATGAGCACAGCCTGGATGGAGCTGAGCAGCATGAGATCTGAGGACACATCCATGTATTACTGTGCACCTGCAGCTTATGATTACGTTTGTGGGAGTTATGGGTATATCGACAACTGGATCGACCTCTGGGTCCAGGGAACCCTGGTCTCCGTGGCTTCACCCTCCACCATGGGCCCATCGGTCTTCCCCCTGGCACCCTCCTCCAAGAGCACCTCTGGGGGCACAGCAGCCCTGGGCTGCCTG";
-				char is_debug = 0;
-				if (strcmp(*it, str_debug) == 0) {
-					is_debug = 1;
-				}
-				*/
 				char is_debug = 0;
 
 				char is_valid = coverage_is_valid(read_length, strlen(*it),
@@ -1177,7 +1133,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 	}
 }
 
-//TODO: Write windows to file
 void output_windows() {
 
 	char* contig_file = "vdj_contigs.fa";
@@ -1188,17 +1143,10 @@ void output_windows() {
 	}
 	fclose(fp);
 
-	fprintf(stderr, "Writing Alignments\n");
+	fprintf(stderr, "Outputting SAM\n");
 	quick_map_process_contig_file(contig_file);
-	fprintf(stderr, "Writing Alignments Done.\n");
+	fprintf(stderr, "SAM output done.\n");
 }
-
-//#define OK 0
-//#define TOO_MANY_PATHS_FROM_ROOT -1
-//#define TOO_MANY_CONTIGS -2
-//#define STOPPED_ON_REPEAT -3
-
-#define SINK "CACACAGCCCCCAACATGCATGCTT"
 
 void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments, char entire_kmer) {
 	int add_len = 1;
@@ -1686,22 +1634,6 @@ void cleanup(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, 
 			free(node);
 		}
 	}
-
-//	for (int i=0; i<=pool->node_pool->block_idx; i++) {
-//		free(pool->node_pool->nodes[i]);
-//	}
-//
-//	free(pool->node_pool->nodes);
-//	free(pool->node_pool);
-//
-//	for (int i=0; i<=pool->read_pool->block_idx; i++) {
-//		free(pool->read_pool->reads[i]);
-//	}
-//
-//	free(pool->read_pool->reads);
-//	free(pool->read_pool);
-//
-//	free(pool);
 }
 
 void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
@@ -1750,31 +1682,14 @@ char* assemble(const char* input,
 			  int max_contigs,
 			  int max_paths_from_root,
 			  int input_read_length,
-			  int input_kmer_size,
-			  const char* bcr_fasta) {
+			  int input_kmer_size) {
 
 
 	fprintf(stderr, "Assembling...\n");
 	read_length = input_read_length;
 
-//	min_contig_length = read_length + 1;
-
-	//TODO: Parameterize mcl - shorter for unaligned region?
-/*
-	if (truncate_on_repeat) {
-		min_contig_length = read_length + 1;
-	} else {
-		min_contig_length = 150;
-	}
-*/
-
 	kmer_size = input_kmer_size;
 
-//	printf("Init root scoring start\n");
-//	init_root_scoring(bcr_fasta, kmer_size);
-//	printf("Init root scoring done\n");
-
-//	struct struct_pool* pool = init_pool();
 	struct struct_pool* pool = NULL;
 	sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new sparse_hash_map<const char*, struct node*, my_hash, eqstr>();
 
@@ -1785,9 +1700,6 @@ char* assemble(const char* input,
 	pthread_mutex_init(&running_thread_mutex, NULL);
 	pthread_mutex_init(&contig_writer_mutex, NULL);
 	pthread_mutex_init(&marker_trackback_mutex, NULL);
-
-	// Init scoring matrix
-	init_score_seq(10000,200);
 
 	build_graph2(input, nodes, pool, 1);
 
@@ -1814,8 +1726,6 @@ char* assemble(const char* input,
 		fprintf(stderr, "Graph too complex for region: %s\n", prefix);
 	}
 
-	//TODO: Set this explicitly
-//	char isUnalignedRegion = !truncate_on_repeat;
 	fprintf(stderr, "Prune graph 2...\n");
 	fflush(stdout);
 	prune_graph(nodes, isUnalignedRegion);
@@ -1846,7 +1756,6 @@ char* assemble(const char* input,
 	int num_threads = 0;
 	running_threads = 0;
 
-//	FILE *fp = fopen(output, "w");
 	int num_roots = 0;
 	pthread_mutex_init(&running_thread_mutex, NULL);
 	pthread_mutex_init(&contig_writer_mutex, NULL);
@@ -1855,15 +1764,12 @@ char* assemble(const char* input,
 
 	while (root_nodes != NULL) {
 
-//		int shadow_count = 0;
-
 		while (running_threads >= MAX_RUNNING_THREADS) {
 			// Sleep for 10 milliseconds
 			usleep(10*1000);
 		}
 
 		int ROOT_NODES_PER_THREADS = 10;
-//		int ROOT_NODES_PER_THREADS = 2;
 
 		int root_count = 1;
 		linked_node* next_root_start = root_nodes;
@@ -1881,7 +1787,6 @@ char* assemble(const char* input,
 		last->next = NULL;
 
 		running_threads += 1;
-//		int ret = pthread_create(&(threads[num_threads]), NULL, worker_thread, root_nodes->node);
 		int ret = pthread_create(&(threads[num_threads]), NULL, worker_thread, next_root_start);
 
 
@@ -1894,35 +1799,6 @@ char* assemble(const char* input,
 		fprintf(stderr, "Running threads: %d\n", running_threads);
 
 		num_threads++;
-
-/*
-		status = build_contigs(root_nodes->node, contig_count, prefix, max_paths_from_root, max_contigs, truncate_on_repeat, false, contig_str);
-
-		switch(status) {
-			case TOO_MANY_CONTIGS:
-				printf("TOO_MANY_CONTIGS: %s\n", prefix);
-				contig_count = 0;
-				break;R
-			case STOPPED_ON_REPEAT:
-				printf("STOPPED_ON_REPEAT: %s\n", prefix);
-				contig_count = 0;
-				break;
-			case TOO_MANY_PATHS_FROM_ROOT:
-				char kmer[1024];
-				memset(kmer, 0, 1024);
-				strncpy(kmer, root_nodes->node->kmer, kmer_size);
-				printf("TOO_MANY_PATHS_FROM_ROOT: %s - %s\n", prefix, kmer);
-				break;
-		}
-
-		// If too many contigs or abort due to repeat, break out of loop and truncate output.
-		if ((status == TOO_MANY_CONTIGS) || (status == STOPPED_ON_REPEAT)) {
-			truncate_output = 1;
-			break;
-		}
-*/
-
-//S		root_nodes = root_nodes->next;
 
 		if ((num_roots % 10) == 0) {
 			fprintf(stderr, "Processed %d root nodes\n", num_roots);
@@ -1950,10 +1826,6 @@ char* assemble(const char* input,
 	fprintf(stderr, "Writing windows to disk\n");
 	output_windows();
 
-//	printf("output contigs: %d\n", output_contigs);
-
-//	write_graph(nodes);
-
 	print_status("PRE_CLEANUP");
 	cleanup(nodes, pool);
 	delete nodes;
@@ -1970,8 +1842,6 @@ char* assemble(const char* input,
 
 	fprintf(stderr, "Done assembling(%ld): %s, %d\n", (stopTime-startTime), output, contig_count);
 
-//	fprintf(stderr, "Done\n");
-
 	if (status == OK || status == TOO_MANY_PATHS_FROM_ROOT) {
 		return contig_str;
 	} else if (status == STOPPED_ON_REPEAT) {
@@ -1981,60 +1851,7 @@ char* assemble(const char* input,
 		strcpy(contig_str, "<ERROR>");
 		return contig_str;
 	}
-
-
-
 }
-
-/*
-extern "C"
- JNIEXPORT jstring JNICALL Java_abra_NativeAssembler_assemble
-   (JNIEnv *env, jobject obj, jstring j_input, jstring j_output, jstring j_prefix,
-    jint j_truncate_on_output, jint j_max_contigs, jint j_max_paths_from_root,
-    jint j_read_length, jint j_kmer_size, jint j_min_node_freq, jint j_min_base_quality)
- {
-
-     //Get the native string from javaString
-     //const char *nativeString = env->GetStringUTFChars(javaString, 0);
-	const char* input  = env->GetStringUTFChars(j_input, 0);
-	const char* output = env->GetStringUTFChars(j_output, 0);
-	const char* prefix = env->GetStringUTFChars(j_prefix, 0);
-	int truncate_on_output = j_truncate_on_output;
-	int max_contigs = j_max_contigs;
-	int max_paths_from_root = j_max_paths_from_root;
-	int read_length = j_read_length;
-	int kmer_size = j_kmer_size;
-	min_node_freq = j_min_node_freq;
-	min_base_quality = j_min_base_quality;
-
-	printf("Abra JNI entry point v0.79\n");
-
-	printf("input len: %s : %d\n", prefix, strlen(input));
-	printf("output: %s\n", output);
-	printf("prefix: %s\n", prefix);
-	printf("truncate_on_output: %d\n", truncate_on_output);
-	printf("max_contigs: %d\n", max_contigs);
-	printf("max_paths_from_root: %d\n", max_paths_from_root);
-	printf("read_length: %d\n", read_length);
-	printf("kmer_size: %d\n", kmer_size);
-	printf("min node freq: %d\n", min_node_freq);
-	printf("min base quality: %d\n", min_base_quality);
-
-	char* contig_str = assemble(input, NULL, output, prefix, truncate_on_output, max_contigs, max_paths_from_root, read_length, kmer_size, "bcr_fasta here");
-	jstring ret = env->NewStringUTF(contig_str);
-
-     //DON'T FORGET THIS LINE!!!
-    env->ReleaseStringUTFChars(j_input, input);
-    env->ReleaseStringUTFChars(j_output, output);
-    env->ReleaseStringUTFChars(j_prefix, prefix);
-    free(contig_str);
-
-    fflush(stdout);
-
-    return ret;
- }
- */
-
 
 char* load_file(const char* filename) {
 	FILE    *infile;
@@ -2067,10 +1884,8 @@ int main(int argc, char* argv[]) {
     min_node_freq = 5;
     min_base_quality = 150;
 
-	//unaligned_input_file = argv[2];
 	min_node_freq = atoi(argv[2]);
 	min_base_quality = atoi(argv[3]);
-//		min_base_quality = min_node_freq * 30;
 	if (min_base_quality >= MAX_QUAL_SUM) {
 		min_base_quality = MAX_QUAL_SUM-1;
 	}
@@ -2106,18 +1921,6 @@ int main(int argc, char* argv[]) {
 
 	print_status("POST_VJF_INIT");
 
-//	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1.b.reads");
-//	char* unaligned_input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/igkv4_1_unaligned.c.reads");
-
-//	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/pass2/pass2.reads");
-//	char* unaligned_input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/pass2/pass2_unaligned.reads");
-
-	//char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/target.reads");
-//	char* input = load_file("/home/lmose/dev/vdj/viz/test1.reads");
-//	char* input = load_file("/home/lmose/dev/vdj/viz/test2.reads");
-
-//	char* input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/mouse/test1/pass2/rna.vdj.reads");
-
 	char* bam_file = input_file;
 	char* input = NULL;
 	char* unaligned_input = NULL;
@@ -2129,23 +1932,7 @@ int main(int argc, char* argv[]) {
 
 	print_status("POST_READ_EXTRACT");
 
-//	char* input = load_file(input_file);
-//	char* unaligned_input = NULL;
-//
-//	if (unaligned_input_file != NULL) {
-//		unaligned_input = load_file(unaligned_input_file);
-//	}
-
-	char* bcr_fasta = "/datastore/nextgenout4/seqware-analysis/lmose/vdj/mouse/mm10.bcr.constant.fa";
-
-//	char* unaligned_input = load_file("/datastore/nextgenout4/seqware-analysis/lmose/vdj/TCGA-FF-8041-01A-11R-2213-07/all_unaligned.reads");
-
         char* output = assemble(
-//                "/datastore/nextgenout4/seqware-analysis/lmose/platinum/test/mtest.reads",
-//                "/datastore/nextgenout4/seqware-analysis/lmose/platinum/test/mtest.fa",
-//                "/datastore/nextgenout4/seqware-analysis/lmose/platinum/test/ftest.reads",
-//                "/datastore/nextgenout4/seqware-analysis/lmose/platinum/test/ftest.fa",
-//		"/datastore/nextgenout4/seqware-analysis/lmose/CALGB_40603/data/CALGB03-1049119-I-31/unaligned.reads",
 		input,
 		unaligned_input,
 		"",
@@ -2154,9 +1941,7 @@ int main(int argc, char* argv[]) {
                 50000000,
                 500000000,
                 read_len,
-                25,
-                bcr_fasta);
-
+                25);
 }
 
 
