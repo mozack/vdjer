@@ -15,7 +15,6 @@
 #include <sparsehash/sparse_hash_set>
 #include <sparsehash/dense_hash_set>
 #include <stdexcept>
-//#include "abra_NativeAssembler.h"
 #include "status.h"
 #include "seq_score.h"
 #include "hash_utils.h"
@@ -993,16 +992,15 @@ struct contig* new_contig() {
 	return curr_contig;
 }
 
-struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_contig_fragments) {
+struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragments) {
 
 	// Stash any orig sequence in fragment vector so the pointer can be shared across contigs
 	if (strlen(orig->seq) > 0) {
 		orig->fragments->push_back(orig->seq);
 
 		// track fragments for cleanup later
-		all_contig_fragments[num_fragments++] = orig->seq;
+		all_contig_fragments.push_back(orig->seq);
 
-		//TODO: Use smaller fragment block here.
 		orig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 		orig->size = 0;  // Reset index (not really size)
 	}
@@ -1016,7 +1014,6 @@ struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_c
 	copy->size = orig->size;
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
-//	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
 	copy->visited_nodes = new sparse_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
 	copy->score = orig->score;
 
@@ -1203,7 +1200,7 @@ void output_windows() {
 
 #define SINK "CACACAGCCCCCAACATGCATGCTT"
 
-void append_to_contig(struct contig* contig, int& num_fragments, char** all_contig_fragments, char entire_kmer) {
+void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments, char entire_kmer) {
 	int add_len = 1;
 	if (entire_kmer) {
 		add_len = kmer_size;
@@ -1213,7 +1210,7 @@ void append_to_contig(struct contig* contig, int& num_fragments, char** all_cont
 		contig->fragments->push_back(contig->seq);
 
 		// track fragments for cleanup later
-		all_contig_fragments[num_fragments++] = contig->seq;
+		all_contig_fragments.push_back(contig->seq);
 
 		contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 		contig->size = 0;  // Reset index (not really size)
@@ -1246,9 +1243,11 @@ int build_contigs(
 	root_contig->curr_node = root;
 	contigs.push(root_contig);
 
-	int MAX_FRAGMENTS_PER_THREAD = 10000000;
-	int num_fragments = 0;
-	char** all_contig_fragments = (char**) calloc(MAX_FRAGMENTS_PER_THREAD, sizeof(char*));
+	// Track all contig fragments
+	// Initialize to reasonably large number to avoid reallocations
+	int INIT_FRAGMENTS_PER_THREAD = 10000000;
+	vector<char*> all_contig_fragments;
+	all_contig_fragments.reserve(INIT_FRAGMENTS_PER_THREAD);
 
 	int paths_from_root = 1;
 
@@ -1281,9 +1280,7 @@ int build_contigs(
 		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size-1)) {
 			// We've reached the end of the contig.
 			// Append entire current node.
-			append_to_contig(contig, num_fragments, all_contig_fragments, 1);
-//			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
-//			contig->real_size += kmer_size;
+			append_to_contig(contig, all_contig_fragments, 1);
 
 			// Now, write the contig
 			if (!shadow_mode) {
@@ -1298,12 +1295,9 @@ int build_contigs(
 		}
 		else {
 			// Append first base from current node
-			append_to_contig(contig, num_fragments, all_contig_fragments, 0);
-//			contig->seq[contig->size++] = contig->curr_node->kmer[0];
-//			contig->real_size += 1;
+			append_to_contig(contig, all_contig_fragments, 0);
 
 			visit_curr_node(contig);
-//			contig->visited_nodes->insert(contig->curr_node->kmer);
 
 			// Count total edges
 			int total_edge_count = 0;
@@ -1326,7 +1320,7 @@ int build_contigs(
 			to_linked_node = to_linked_node->next;
 
 			while (to_linked_node != NULL) {
-				struct contig* contig_branch = copy_contig(contig, num_fragments, all_contig_fragments);
+				struct contig* contig_branch = copy_contig(contig, all_contig_fragments);
 				contig_branch->curr_node = to_linked_node->node;
 				contig_branch->score = contig_branch->score + log10(contig_branch->curr_node->frequency) - log10_total_edge_count;
 				contigs.push(contig_branch);
@@ -1358,11 +1352,9 @@ int build_contigs(
 		free_contig(contig);
 	}
 
-	for (int i=0; i<num_fragments; i++) {
-		free(all_contig_fragments[i]);
+	for (vector<char*>::iterator it=all_contig_fragments.begin(); it != all_contig_fragments.end(); ++it) {
+		free(*it);
 	}
-
-	free(all_contig_fragments);
 
 	return status;
 }
