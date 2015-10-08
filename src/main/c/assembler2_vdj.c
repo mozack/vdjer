@@ -82,6 +82,8 @@ extern void quick_map_process_contig_file(char* contig_file);
 // Must be greater than the number of  source(root) nodes - TODO: re-use threads and allocate dynamically.
 #define MAX_THREADS 100000
 
+#define MAX_NODE_VISITS 5
+
 // TODO: Parameterize
 int MAX_RUNNING_THREADS;
 
@@ -969,7 +971,7 @@ struct contig {
 	char* seq;
 	vector<char*>* fragments;
 	struct node* curr_node;
-	sparse_hash_set<const char*, my_hash, eqstr>* visited_nodes;
+	sparse_hash_map<const char*, char, my_hash, eqstr>* visited_nodes;
 	double score;
 	int size;  // really curr_index now
 	int real_size;
@@ -984,7 +986,7 @@ struct contig* new_contig() {
 	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
-	curr_contig->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
+	curr_contig->visited_nodes = new sparse_hash_map<const char*, char, my_hash, eqstr>();
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
@@ -1015,7 +1017,7 @@ struct contig* copy_contig(struct contig* orig, int& num_fragments, char** all_c
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
 //	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*orig->visited_nodes);
-	copy->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
+	copy->visited_nodes = new sparse_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
 	copy->score = orig->score;
 
 	return copy;
@@ -1029,9 +1031,32 @@ void free_contig(struct contig* contig) {
 	free(contig);
 }
 
+char contains_visited_node(struct contig* contig, struct node* node) {
+	sparse_hash_map<const char*, char, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
+	return it != contig->visited_nodes->end();
+}
+
 char is_node_visited(struct contig* contig, struct node* node) {
-	 sparse_hash_set<const char*, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
-	 return it != contig->visited_nodes->end();
+	char is_visited = 0;
+	if (contains_visited_node(contig, node)) {
+		sparse_hash_map<const char*, char, my_hash, eqstr>* vnodes = contig->visited_nodes;
+		if ((*vnodes)[node->kmer] > MAX_NODE_VISITS) {
+			is_visited = 1;
+		}
+	}
+
+	return is_visited;
+}
+
+void visit_curr_node(struct contig* contig) {
+	char num_visits = 1;
+	sparse_hash_map<const char*, char, my_hash, eqstr>* vnodes = contig->visited_nodes;
+
+	if (contains_visited_node(contig, contig->curr_node)) {
+		num_visits = (*vnodes)[contig->curr_node->kmer] + 1;
+	}
+
+	(*vnodes)[contig->curr_node->kmer] = num_visits;
 }
 
 int get_contig_len(struct contig* contig) {
@@ -1277,7 +1302,8 @@ int build_contigs(
 //			contig->seq[contig->size++] = contig->curr_node->kmer[0];
 //			contig->real_size += 1;
 
-			contig->visited_nodes->insert(contig->curr_node->kmer);
+			visit_curr_node(contig);
+//			contig->visited_nodes->insert(contig->curr_node->kmer);
 
 			// Count total edges
 			int total_edge_count = 0;
