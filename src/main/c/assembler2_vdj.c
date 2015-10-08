@@ -119,6 +119,7 @@ float MIN_CONTIG_SCORE;
 
 int CONTIG_SIZE;
 int INSERT_LEN;
+int FILTER_READ_FLOOR;
 
 struct struct_pool {
 //	struct node_pool* node_pool;
@@ -1087,7 +1088,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 //			int insert_high = 175;
 			int insert_low = INSERT_LEN;
 			int insert_high = INSERT_LEN;
-			int floor = 2;
+			int floor = FILTER_READ_FLOOR;
 
 			// TODO: Use RW lock here?
 			pthread_mutex_lock(&contig_writer_mutex);
@@ -1913,6 +1914,7 @@ int main(int argc, char* argv[]) {
 	char* v_region = argv[17];
 	char* c_region = argv[18];
 	INSERT_LEN = atoi(argv[19]);
+	FILTER_READ_FLOOR = atoi(argv[20]);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
