@@ -999,7 +999,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 	if (contig->real_size >= MIN_CONTIG_SIZE) {
 		char buf[MAX_CONTIG_SIZE+1];
 		total_contigs += 1;
-		if ((total_contigs % 10000) == 0) {
+		if ((total_contigs % 100000) == 0) {
 			fprintf(stderr, "contig_candidates: %d\n", total_contigs);
 		}
 		contig_count++;
