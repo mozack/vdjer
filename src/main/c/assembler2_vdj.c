@@ -992,6 +992,7 @@ char contains_seq(dense_hash_set<const char*, contig_hash, contig_eqstr>& seq_se
 
 
 int contig_num = 1;
+int total_contigs = 0;
 
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
 
