@@ -13,6 +13,7 @@
 #include <vector>
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
+#include <sparsehash/dense_hash_map>
 #include <sparsehash/dense_hash_set>
 #include <stdexcept>
 #include "status.h"
@@ -24,6 +25,7 @@
 using namespace std;
 using google::sparse_hash_map;
 using google::sparse_hash_set;
+using google::dense_hash_map;
 using google::dense_hash_set;
 
 // bam_read.c
@@ -881,7 +883,7 @@ struct contig {
 	char* seq;
 	vector<char*>* fragments;
 	struct node* curr_node;
-	sparse_hash_map<const char*, char, my_hash, eqstr>* visited_nodes;
+	dense_hash_map<const char*, char, my_hash, eqstr>* visited_nodes;
 	double score;
 	int size;  // really curr_index now
 	int real_size;
@@ -894,7 +896,8 @@ struct contig* new_contig() {
 	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
-	curr_contig->visited_nodes = new sparse_hash_map<const char*, char, my_hash, eqstr>();
+	curr_contig->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
+	curr_contig->visited_nodes->set_empty_key(NULL);
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
@@ -923,7 +926,7 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 	copy->size = orig->size;
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
-	copy->visited_nodes = new sparse_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
+	copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
 	copy->score = orig->score;
 
 	return copy;
@@ -938,14 +941,14 @@ void free_contig(struct contig* contig) {
 }
 
 char contains_visited_node(struct contig* contig, struct node* node) {
-	sparse_hash_map<const char*, char, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
+	dense_hash_map<const char*, char, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
 	return it != contig->visited_nodes->end();
 }
 
 char is_node_visited(struct contig* contig, struct node* node) {
 	char is_visited = 0;
 	if (contains_visited_node(contig, node)) {
-		sparse_hash_map<const char*, char, my_hash, eqstr>* vnodes = contig->visited_nodes;
+		dense_hash_map<const char*, char, my_hash, eqstr>* vnodes = contig->visited_nodes;
 		if ((*vnodes)[node->kmer] > MAX_NODE_VISITS) {
 			is_visited = 1;
 		}
@@ -956,7 +959,7 @@ char is_node_visited(struct contig* contig, struct node* node) {
 
 void visit_curr_node(struct contig* contig) {
 	char num_visits = 1;
-	sparse_hash_map<const char*, char, my_hash, eqstr>* vnodes = contig->visited_nodes;
+	dense_hash_map<const char*, char, my_hash, eqstr>* vnodes = contig->visited_nodes;
 
 	if (contains_visited_node(contig, contig->curr_node)) {
 		num_visits = (*vnodes)[contig->curr_node->kmer] + 1;
