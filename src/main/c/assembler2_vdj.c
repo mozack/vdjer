@@ -70,7 +70,7 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MAX_NODES 900000000
 
 // Kmers containing bases below this threshold are excluded from assembly.
-#define MIN_BASE_QUALITY 13
+#define MIN_BASE_QUALITY 20
 
 // Minimum edge frequency as percent
 // #define MIN_EDGE_FREQUENCY .02
