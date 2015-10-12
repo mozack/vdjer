@@ -1856,6 +1856,8 @@ int main(int argc, char* argv[]) {
 	FILTER_READ_FLOOR = atoi(argv[20]);
 	int kmer = atoi(argv[21]);
 
+	fprintf(stderr, "mnf: %d\n", min_node_freq);
+	fprintf(stderr, "mbq: %d\n", min_base_quality);
 	fprintf(stderr, "kmer: %d\n", kmer);
 
 	vjf_windows.set_empty_key(NULL);
