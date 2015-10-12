@@ -898,6 +898,7 @@ struct contig* new_contig() {
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	curr_contig->visited_nodes->set_empty_key(NULL);
+//	curr_contig->visited_nodes->resize(MAX_CONTIG_SIZE);
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
@@ -1853,6 +1854,7 @@ int main(int argc, char* argv[]) {
 	char* c_region = argv[18];
 	INSERT_LEN = atoi(argv[19]);
 	FILTER_READ_FLOOR = atoi(argv[20]);
+	int kmer = atoi(argv[21]);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
@@ -1881,7 +1883,7 @@ int main(int argc, char* argv[]) {
                 50000000,
                 500000000,
                 read_len,
-                25);
+                kmer);
 }
 
 
