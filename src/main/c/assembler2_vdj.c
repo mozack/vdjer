@@ -1856,6 +1856,8 @@ int main(int argc, char* argv[]) {
 	FILTER_READ_FLOOR = atoi(argv[20]);
 	int kmer = atoi(argv[21]);
 
+	fprintf(stderr, "kmer: %d\n", kmer);
+
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
 	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
