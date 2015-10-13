@@ -898,7 +898,7 @@ struct contig* new_contig() {
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	curr_contig->visited_nodes->set_empty_key(NULL);
-//	curr_contig->visited_nodes->resize(MAX_CONTIG_SIZE);
+	curr_contig->visited_nodes->resize(MAX_CONTIG_SIZE);
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
