@@ -898,7 +898,7 @@ struct contig* new_contig() {
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	curr_contig->visited_nodes->set_empty_key(NULL);
-	curr_contig->visited_nodes->resize(MAX_CONTIG_SIZE);
+//	curr_contig->visited_nodes->resize(MAX_CONTIG_SIZE);
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 
@@ -927,7 +927,8 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 	copy->size = orig->size;
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
-	copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
+	//copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
+	copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	copy->score = orig->score;
 
 	return copy;
@@ -942,8 +943,10 @@ void free_contig(struct contig* contig) {
 }
 
 char contains_visited_node(struct contig* contig, struct node* node) {
-	dense_hash_map<const char*, char, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
-	return it != contig->visited_nodes->end();
+//	dense_hash_map<const char*, char, my_hash, eqstr>::const_iterator it = contig->visited_nodes->find(node->kmer);
+//	return it != contig->visited_nodes->end();
+
+	return 0;
 }
 
 char is_node_visited(struct contig* contig, struct node* node) {
@@ -1185,7 +1188,7 @@ int build_contigs(
 			// Append first base from current node
 			append_to_contig(contig, all_contig_fragments, 0);
 
-			visit_curr_node(contig);
+//			visit_curr_node(contig);
 
 			// Count total edges
 			int total_edge_count = 0;
