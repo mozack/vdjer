@@ -22,5 +22,5 @@ void print_status(char* desc) {
 	print_file("/proc/buddyinfo", "BUDDY_INFO", desc);
 	char prefix[256];
 	sprintf(prefix, "STAT:%ld", time(NULL));
-	print_file("/proc/self/stat", "STAT", desc);
+	print_file("/proc/self/stat", prefix, desc);
 }
