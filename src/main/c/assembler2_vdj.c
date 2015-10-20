@@ -1705,9 +1705,17 @@ char* assemble(const char* input,
 
 	linked_node* root_link = NULL;
 
+	long ts = time(NULL);
+	long te = time(NULL);
+
 	while (root_nodes != NULL) {
 
 		while (running_threads >= MAX_RUNNING_THREADS) {
+			te = time(NULL);
+			if (te-ts > 300) {
+				print_status("STATUS_UPDATE");
+				ts = te;
+			}
 			// Sleep for 10 milliseconds
 			usleep(10*1000);
 		}
@@ -1748,15 +1756,21 @@ char* assemble(const char* input,
 			fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
 			fprintf(stderr, "Window candidate size: %d\n", vjf_window_candidates.size());
 			fflush(stdout);
-			print_status("STATUS_UPDATE");
+//			print_status("STATUS_UPDATE");
 
 		}
 	}
 
 	// Wait for all threads to complete
 	while (running_threads > 0) {
+		te = time(NULL);
+		if (te-ts > 300) {
+			print_status("STATUS_UPDATE");
+			ts = te;
+		}
 		// Sleep for 10 milliseconds
 		usleep(10*1000);
+
 	}
 
 	print_status("THREADS_DONE");
