@@ -205,9 +205,9 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, vjf_hash, vjf_e
 
 void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
 
-	// Allocate space for up to 100,000 CDR3's
-	// TODO: Allocate space as needed, not all up front
-	char* cdr3_block = (char*) calloc(1024L*100000L, sizeof(char));
+	// Allocate space for up to 100 CDR3's
+	// TODO: Re-use memory (or shrink and move to stack?)
+	char* cdr3_block = (char*) calloc(1024L*100L, sizeof(char));
 	char* orig_cdr3_block = cdr3_block;
 
 	sparse_hash_set<const char*, vjf_hash, vjf_eqstr> cdr3_seq;
