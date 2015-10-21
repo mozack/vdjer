@@ -122,6 +122,7 @@ float MIN_CONTIG_SCORE;
 int CONTIG_SIZE;
 int INSERT_LEN;
 int FILTER_READ_FLOOR;
+int MIN_ROOT_SIMILARITY;
 
 struct struct_pool {
 //	struct node_pool* node_pool;
@@ -618,12 +619,20 @@ int is_root(struct node* node, int& num_root_candidates) {
 			num_root_candidates += 1;
 			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node)) {
 
-				is_root = 1;
-				node->is_root = 1;
+				int score = score_seq(node->kmer, kmer_size);
+				if (score >= MIN_ROOT_SIMILARITY) {
 
-				fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
-				print_kmer(node->kmer);
-				fprintf(stderr, "\n");
+					is_root = 1;
+					node->is_root = 1;
+
+					fprintf(stderr, "ROOT_NODE:\t%d\t%d\t", node->frequency, score);
+					print_kmer(node->kmer);
+					fprintf(stderr, "\n");
+				} else {
+					fprintf(stderr, "FILTERED_NODE:\t%d\t%d\t", node->frequency, score);
+					print_kmer(node->kmer);
+					fprintf(stderr, "\n");
+				}
 			}
 		} else {
 			// Identify nodes that point to themselves with no other incoming edges.
@@ -1875,10 +1884,15 @@ int main(int argc, char* argv[]) {
 	INSERT_LEN = atoi(argv[19]);
 	FILTER_READ_FLOOR = atoi(argv[20]);
 	int kmer = atoi(argv[21]);
+	char* lv_fasta = argv[22];
+	MIN_ROOT_SIMILARITY = atoi(argv[23]);
 
 	fprintf(stderr, "mnf: %d\n", min_node_freq);
 	fprintf(stderr, "mbq: %d\n", min_base_quality);
 	fprintf(stderr, "kmer: %d\n", kmer);
+
+	// Initialize seq scoring for root node evalulation
+	score_seq_init(kmer, 1000, lv_fasta);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
