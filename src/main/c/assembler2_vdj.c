@@ -1077,6 +1077,9 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				} else {
 //					fprintf(stderr, "INVALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 				}
+			} else {
+				// TODO: Re-use buffers here...
+				free((char*) *it);
 			}
 		}
 	}
