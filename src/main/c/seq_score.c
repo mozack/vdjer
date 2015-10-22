@@ -22,7 +22,6 @@ void score_seq_init(int max_len1, int max_len2) {
 void score_seq_init(int max_len1, int max_len2, char* fasta) {
 	score_seq_init(max_len1, max_len2);
 
-	printf ("A1\n");
 	fflush(stdout);
 	char* contig = (char*) calloc(CONTIG_BUF_MAX, sizeof(char));
 	FILE* fp = fopen(fasta, "r");
@@ -31,16 +30,13 @@ void score_seq_init(int max_len1, int max_len2, char* fasta) {
 		if (contig[0] != '>') {
 			// Get rid of newline
 			contig[strlen(contig)-1] = '\0';
-			printf ("A2\n");
 			fflush(stdout);
 			score_seq_contigs.push_back(contig);
-			printf ("A3\n");
 			fflush(stdout);
 		}
 
 		contig = (char*) calloc(CONTIG_BUF_MAX, sizeof(char));
 	}
-	printf ("A4\n");
 	fflush(stdout);
 	fclose(fp);
 }
@@ -122,6 +118,7 @@ int score_seq(const char* seq1) {
 	return score_seq(seq1, strlen(seq1));
 }
 
+/*
 int main(int argc, char* argv[]) {
 
 	score_seq_init(35, 500,"/home/lmose/dev/vdj/roots/igh_lv_partial_fix.fa");
@@ -156,3 +153,4 @@ int main(int argc, char* argv[]) {
 	fclose(fp);
 
 }
+*/
