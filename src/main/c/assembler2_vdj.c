@@ -313,6 +313,97 @@ void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_
 		}
 	}
 }
+/*
+void add_to_table(char* sequence, sparse_hash_map<const char*, struct pre_node, my_hash, eqstr>& pre_table, char* qual, int strand) {
+
+	for (int i=0; i<=read_length-kmer_size; i++) {
+
+		if (include_kmer(sequence, qual, i)) {
+			char* kmer = get_kmer(i, sequence);
+			char* kmer_qual = get_kmer(i, qual);
+
+			struct pre_node curr;
+
+			if (pre_table.find[kmer] == pre_table.end()) {
+				curr.contributingRead = contributingRead;
+				curr.frequency = 1;
+				curr.hasMultipleUniqueReads = 0;
+				curr.contributing_strand = (char) strand;
+				for (int i=0; i<kmer_size; i++) {
+					curr.qual_sums[i] = phred33(qual[i]);
+				}
+
+				pre_table[kmer] = curr;
+			} else {
+				if (node->frequency < MAX_FREQUENCY-1) {
+					node->frequency++;
+				}
+
+				if (!(node->hasMultipleUniqueReads) &&
+					(!compare(node->contributingRead, read_seq) || node->contributing_strand != (char) strand)) {
+					node->hasMultipleUniqueReads = 1;
+				}
+
+				for (int i=0; i<kmer_size; i++) {
+					unsigned char phred33_qual = phred33(kmer_qual[i]);
+					if ((node->qual_sums[i] + phred33_qual) < MAX_QUAL_SUM-41) {
+						node->qual_sums[i] += phred33_qual;
+					} else {
+						node->qual_sums[i] = MAX_QUAL_SUM;
+					}
+				}
+
+
+				increment_node_freq(curr, sequence, strand, kmer_qual);
+			}
+		}
+	}
+}
+
+void build_pre_graph(const char* input, sparse_hash_map<const char*, struct node*, my_hash, eqstr>& pre_nodes) {
+	size_t input_len = strlen(input);
+	int record_len = read_length*2 + 1;
+
+	fprintf(stderr, "input_len: %ld, record_len: %d\n", input_len, record_len);
+	size_t num_records = input_len / record_len;
+	size_t record = 0;
+	const char* ptr = input;
+	int num_reads = 0;
+
+	while ((record < num_records) && (nodes->size() < MAX_NODES)) {
+		ptr = &(input[record*record_len]);
+		int strand = 0;
+
+		if (ptr[0] == '0') {
+			strand = 0;
+		} else if (ptr[0] == '1') {
+			strand = 1;
+		} else {
+			fprintf(stderr, "Initial char in input invalid: %c\n", ptr[0]);
+			fprintf(stderr, "ERROR!  INVALID INPUT:\n===========================%s\n===========================\n", input);
+			exit(-1);
+		}
+
+		char* read_ptr = (char*) &(ptr[1]);
+		char* qual_ptr = (char*) &(ptr[read_length+1]);
+
+		// Add to hash table
+
+
+		add_to_graph(read_ptr, nodes, pool, qual_ptr, strand, has_roots);
+		record++;
+
+		if ((record % 1000000) == 0) {
+			fprintf(stderr, "record_count: %d\n", record);
+			fflush(stdout);
+		}
+	}
+
+	fprintf(stderr, "Num reads: %d\n", record);
+	fprintf(stderr, "Num nodes: %d\n", nodes->size());
+	fflush(stderr);
+}
+*/
 
 void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char has_roots) {
 	size_t input_len = strlen(input);
@@ -1328,7 +1419,7 @@ void* worker_thread(void* t) {
 
 		struct node* source = root->node;
 
-		if (score_seq(source, MIN_ROOT_HOMOLOGY_SCORE)) {
+		if (score_seq(source->kmer, MIN_ROOT_HOMOLOGY_SCORE)) {
 
 			int contig_count = 0;
 			const char* prefix = "foo";
@@ -1348,7 +1439,7 @@ void* worker_thread(void* t) {
 
 			processed_nodes += 1;
 			if ((processed_nodes % 100) == 0) {
-				fprintf(stderr, "Processed roots: %d\n", processed_nodes)
+				fprintf(stderr, "Processed roots: %d\n", processed_nodes);
 			}
 		}
 
