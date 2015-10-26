@@ -78,7 +78,7 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MIN_EDGE_FREQUENCY -1
 
 // TODO: This should vary be kmer len
-#define MIN_ROOT_HOMOLOGY_SCORE 16
+//#define MIN_ROOT_HOMOLOGY_SCORE 25
 
 // Must be greater than the number of  source(root) nodes - TODO: re-use threads and allocate dynamically.
 #define MAX_THREADS 1000000
@@ -86,6 +86,8 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MAX_NODE_VISITS 5
 
 #define VREGION_BUF_MAX 10000000
+
+int MIN_ROOT_HOMOLOGY_SCORE;
 
 int MAX_RUNNING_THREADS;
 
@@ -677,7 +679,7 @@ int is_root(struct node* node, int& num_root_candidates) {
 					is_root = 1;
 //					node->is_root = 1;
 
-					fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
+					fprintf(stderr, "ROOT_INIT:\t%d\t", node->frequency);
 					print_kmer(node->kmer);
 					fprintf(stderr, "\n");
 //				} else {
@@ -1315,6 +1317,8 @@ int build_contigs(
 	return status;
 }
 
+int processed_nodes = 0;
+
 //TODO: Use thread pool instead of spawning threads
 void* worker_thread(void* t) {
 
@@ -1324,20 +1328,28 @@ void* worker_thread(void* t) {
 
 		struct node* source = root->node;
 
-		int contig_count = 0;
-		const char* prefix = "foo";
-		int max_paths_from_root = 500000000;
-		int max_contigs = 50000000;
-		char stop_on_repeat = false;
-		char shadow_mode = false;
-		char* contig_str = NULL;
-		int status = build_contigs(source, contig_count, prefix, max_paths_from_root, max_contigs, stop_on_repeat,
-				shadow_mode, contig_str);
+		if (score_seq(source, MIN_ROOT_HOMOLOGY_SCORE)) {
 
-		if (status != OK) {
-			fprintf(stderr, "Status: %d\n", status);
-			fflush(stderr);
-			exit(status);
+			int contig_count = 0;
+			const char* prefix = "foo";
+			int max_paths_from_root = 500000000;
+			int max_contigs = 50000000;
+			char stop_on_repeat = false;
+			char shadow_mode = false;
+			char* contig_str = NULL;
+			int status = build_contigs(source, contig_count, prefix, max_paths_from_root, max_contigs, stop_on_repeat,
+					shadow_mode, contig_str);
+
+			if (status != OK) {
+				fprintf(stderr, "Status: %d\n", status);
+				fflush(stderr);
+				exit(status);
+			}
+
+			processed_nodes += 1;
+			if ((processed_nodes % 100) == 0) {
+				fprintf(stderr, "Processed roots: %d\n", processed_nodes)
+			}
 		}
 
 		root = root->next;
@@ -1683,9 +1695,9 @@ void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* node
 
 linked_node* traceback_roots(linked_node* root) {
 
-	dense_hash_set<const char*, vregion_hash, vregion_eqstr> contig_index;
-	contig_index.set_empty_key(NULL);
-	load_root_similarity_index(contig_index);
+//	dense_hash_set<const char*, vregion_hash, vregion_eqstr> contig_index;
+//	contig_index.set_empty_key(NULL);
+//	load_root_similarity_index(contig_index);
 
 	linked_node* new_roots = NULL;
 	linked_node* new_roots_ptr = NULL;
@@ -1707,7 +1719,7 @@ linked_node* traceback_roots(linked_node* root) {
 
 		if (tracebacks.find(node->kmer) == tracebacks.end()) {
 
-			if (has_vregion_homology(node->kmer, contig_index)) {
+//			if (has_vregion_homology(node->kmer, contig_index)) {
 				node->is_root = 1;
 
 				fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
@@ -1726,11 +1738,11 @@ linked_node* traceback_roots(linked_node* root) {
 				new_roots_ptr->node = node;
 				new_roots_ptr->next = NULL;
 
-			} else {
-				fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
-				print_kmer(node->kmer);
-				fprintf(stderr, "\n");
-			}
+//			} else {
+//				fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
+//				print_kmer(node->kmer);
+//				fprintf(stderr, "\n");
+//			}
 		}
 
 		root = root->next;
@@ -2000,13 +2012,14 @@ int main(int argc, char* argv[]) {
 	int kmer = atoi(argv[21]);
 	ROOT_SIMILARITY_FILE = argv[22];
 	VREGION_KMER_SIZE = atoi(argv[23]);
+	MIN_ROOT_HOMOLOGY_SCORE = atoi(argv[24]);
 
 	fprintf(stderr, "mnf: %d\n", min_node_freq);
 	fprintf(stderr, "mbq: %d\n", min_base_quality);
 	fprintf(stderr, "kmer: %d\n", kmer);
 
 	// Initialize seq scoring for root node evalulation
-//	score_seq_init(kmer, 1000, lv_fasta);
+	score_seq_init(kmer, 1000, ROOT_SIMILARITY_FILE);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
