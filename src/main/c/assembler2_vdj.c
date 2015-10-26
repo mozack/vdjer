@@ -44,7 +44,7 @@ extern void quick_map_process_contig(char* contig_id, char* contig, vector<mappe
 extern void quick_map_process_contig_file(char* contig_file);
 
 #define MIN_CONTIG_SIZE 500
-#define MAX_CONTIG_SIZE 600
+#define MAX_CONTIG_SIZE 650
 #define MAX_READ_LENGTH 1001
 #define MAX_FRAGMENT_SIZE 100
 //#define MIN_BASE_QUALITY 20
@@ -85,6 +85,8 @@ extern void quick_map_process_contig_file(char* contig_file);
 
 #define MAX_NODE_VISITS 5
 
+#define VREGION_BUF_MAX 10000000
+
 int MAX_RUNNING_THREADS;
 
 pthread_mutex_t running_thread_mutex;
@@ -122,7 +124,9 @@ float MIN_CONTIG_SCORE;
 int CONTIG_SIZE;
 int INSERT_LEN;
 int FILTER_READ_FLOOR;
-int MIN_ROOT_SIMILARITY;
+//int MIN_ROOT_SIMILARITY;
+char* ROOT_SIMILARITY_FILE;
+int VREGION_KMER_SIZE;
 
 struct struct_pool {
 //	struct node_pool* node_pool;
@@ -611,6 +615,53 @@ void print_node(struct node* node) {
 
 int num_root_candidates = 0;
 
+char has_vregion_homology(char* kmer, dense_hash_set<const char*, vregion_hash, vregion_eqstr>& contig_index) {
+
+	char is_homologous = 0;
+
+	int stop =  kmer_size - VREGION_KMER_SIZE;
+
+	// Identify hits in hash index
+	for (int i=0; i<stop; i++) {
+		if (contig_index.find(kmer+i) != contig_index.end()) {
+			is_homologous = 1;
+			break;
+		}
+	}
+
+	return is_homologous;
+}
+
+void add_to_index(char* contig, dense_hash_set<const char*, vregion_hash, vregion_eqstr>& contig_index) {
+	int stop = strlen(contig)-VREGION_KMER_SIZE;
+	for (int i=0; i<stop; i++) {
+		if (contig_index.find(contig+i) == contig_index.end()) {
+			contig_index.insert(contig+i);
+		}
+	}
+}
+
+void load_root_similarity_index(dense_hash_set<const char*, vregion_hash, vregion_eqstr>& contig_index) {
+//	contig_index.set_deleted_key(NULL);
+	char* contig = (char*) calloc(VREGION_BUF_MAX, sizeof(char));
+
+	FILE* fp = fopen(ROOT_SIMILARITY_FILE, "r");
+
+	int seq_found = 0;
+
+	while (fgets(contig, 1000000, fp) != NULL) {
+		if (contig[0] != '>') {
+			// Get rid of newline
+			contig[strlen(contig)-1] = '\0';
+			add_to_index(contig, contig_index);
+			seq_found++;
+		}
+	}
+
+	assert(seq_found == 1);
+}
+
+
 int is_root(struct node* node, int& num_root_candidates) {
 	int is_root = 0;
 
@@ -619,20 +670,21 @@ int is_root(struct node* node, int& num_root_candidates) {
 			num_root_candidates += 1;
 			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node)) {
 
-				int score = score_seq(node->kmer, kmer_size);
-				if (score >= MIN_ROOT_SIMILARITY) {
+//				int score = score_seq(node->kmer, kmer_size);
+//				if (score >= MIN_ROOT_SIMILARITY) {
 
+//				if (has_vregion_homology(node->kmer, contig_index)) {
 					is_root = 1;
-					node->is_root = 1;
+//					node->is_root = 1;
 
-					fprintf(stderr, "ROOT_NODE:\t%d\t%d\t", node->frequency, score);
+					fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
 					print_kmer(node->kmer);
 					fprintf(stderr, "\n");
-				} else {
-					fprintf(stderr, "FILTERED_NODE:\t%d\t%d\t", node->frequency, score);
-					print_kmer(node->kmer);
-					fprintf(stderr, "\n");
-				}
+//				} else {
+//					fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
+//					print_kmer(node->kmer);
+//					fprintf(stderr, "\n");
+//				}
 			}
 		} else {
 			// Identify nodes that point to themselves with no other incoming edges.
@@ -648,6 +700,7 @@ int is_root(struct node* node, int& num_root_candidates) {
 	return is_root;
 
 }
+
 
 struct linked_node* identify_root_nodes(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
 
@@ -1628,6 +1681,65 @@ void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* node
 	fclose(fp);
 }
 
+linked_node* traceback_roots(linked_node* root) {
+
+	dense_hash_set<const char*, vregion_hash, vregion_eqstr> contig_index;
+	contig_index.set_empty_key(NULL);
+	load_root_similarity_index(contig_index);
+
+	linked_node* new_roots = NULL;
+	linked_node* new_roots_ptr = NULL;
+
+	dense_hash_set<char*, my_hash, eqstr> tracebacks;
+	tracebacks.set_empty_key(NULL);
+
+	while (root != NULL) {
+		struct node* node = root->node;
+		//
+		// Walk backwards in graph in until there are no more nodes or
+		// a fork in the graph
+		int ctr = 0;  // Don't allow infinite loop
+		while (node->fromNodes != NULL && node->fromNodes->next == NULL & ctr++ < 300) {
+			node = node->fromNodes->node;
+		}
+
+		fprintf(stderr, "Traceback dist: %d\n", ctr);
+
+		if (tracebacks.find(node->kmer) == tracebacks.end()) {
+
+			if (has_vregion_homology(node->kmer, contig_index)) {
+				node->is_root = 1;
+
+				fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
+				print_kmer(node->kmer);
+				fprintf(stderr, "\n");
+
+				tracebacks.insert(node->kmer);
+				if (new_roots == NULL) {
+					new_roots = (linked_node*) calloc(1, sizeof(linked_node));
+					new_roots_ptr = new_roots;
+				} else {
+					new_roots_ptr->next = (linked_node*) calloc(1, sizeof(linked_node));
+					new_roots_ptr = new_roots_ptr->next;
+				}
+
+				new_roots_ptr->node = node;
+				new_roots_ptr->next = NULL;
+
+			} else {
+				fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
+				print_kmer(node->kmer);
+				fprintf(stderr, "\n");
+			}
+		}
+
+		root = root->next;
+	}
+
+	fprintf(stderr, "New roots size: %d\n", tracebacks.size());
+
+	return new_roots;
+}
 
 char* assemble(const char* input,
 			   const char* unaligned_input,
@@ -1686,6 +1798,8 @@ char* assemble(const char* input,
 	prune_graph(nodes, isUnalignedRegion);
 	fprintf(stderr, "Prune graph 2 Done...\n");
 	fflush(stdout);
+
+	root_nodes = traceback_roots(root_nodes);
 
 	print_status("POST_PRUNE_GRAPH2");
 
@@ -1884,15 +1998,15 @@ int main(int argc, char* argv[]) {
 	INSERT_LEN = atoi(argv[19]);
 	FILTER_READ_FLOOR = atoi(argv[20]);
 	int kmer = atoi(argv[21]);
-	char* lv_fasta = argv[22];
-	MIN_ROOT_SIMILARITY = atoi(argv[23]);
+	ROOT_SIMILARITY_FILE = argv[22];
+	VREGION_KMER_SIZE = atoi(argv[23]);
 
 	fprintf(stderr, "mnf: %d\n", min_node_freq);
 	fprintf(stderr, "mbq: %d\n", min_base_quality);
 	fprintf(stderr, "kmer: %d\n", kmer);
 
 	// Initialize seq scoring for root node evalulation
-	score_seq_init(kmer, 1000, lv_fasta);
+//	score_seq_init(kmer, 1000, lv_fasta);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
