@@ -156,7 +156,7 @@ int score_seq(const char* seq1, int seq_len, int threshold) {
 
 
 int score_seq(const char* seq1, int threshold) {
-	return score_seq(seq1, strlen(seq1), threshold);
+	return score_seq(seq1, kmer_size, threshold);
 }
 
 /*
