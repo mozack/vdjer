@@ -1838,6 +1838,10 @@ void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* node
 
 linked_node* traceback_roots(linked_node* root) {
 
+	dense_hash_set<const char*, vregion_hash, vregion_eqstr> contig_index;
+	contig_index.set_empty_key(NULL);
+	load_root_similarity_index(contig_index);
+
 	linked_node* new_roots = NULL;
 	linked_node* new_roots_ptr = NULL;
 
