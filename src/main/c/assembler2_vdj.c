@@ -93,7 +93,6 @@ int MAX_RUNNING_THREADS;
 
 pthread_mutex_t running_thread_mutex;
 pthread_mutex_t contig_writer_mutex;
-pthread_mutex_t marker_trackback_mutex;
 
 int running_threads = 0;
 
@@ -101,8 +100,6 @@ int running_threads = 0;
 dense_hash_set<const char*, contig_hash, contig_eqstr> vjf_windows;
 
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
-
-#define MAX_DISTANCE_FROM_MARKER 1000
 
 // #define MAX_TRACEBACK_STACK_SIZE 1024
 #define MAX_TRACEBACK_STACK_SIZE 256
@@ -608,217 +605,6 @@ struct linked_node* identify_root_nodes(dense_hash_map<const char*, struct node*
 	fflush(stderr);
 
 	return root_nodes;
-}
-
-struct node_tracker {
-	struct node* curr_node;
-	sparse_hash_set<const char*, my_hash, eqstr>* visited_nodes;
-	int distance;
-};
-
-void get_roots_from_marker(sparse_hash_map<const char*, struct node*, my_hash, eqstr>& roots, struct node* marker) {
-
-	node_tracker* tracker = (node_tracker*) calloc(1, sizeof(node_tracker));
-	tracker->curr_node = marker;
-	tracker->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>();
-	tracker->distance = 0;
-//	tracker->visited_nodes->insert(tracker.curr_node->kmer);
-
-	stack<node_tracker*> node_stack;
-	node_stack.push(tracker);
-
-	fprintf(stderr, "Track back start: ");
-	print_kmer(tracker->curr_node);
-	fprintf(stderr, "\n");
-	fflush(stderr);
-
-	while (!node_stack.empty()) {
-		node_tracker* curr = node_stack.top();
-		node_stack.pop();
-
-		// Search for the current node's kmer in the set of visited kmers
-		sparse_hash_set<const char*, my_hash, eqstr>::const_iterator it = curr->visited_nodes->find(curr->curr_node->kmer);
-		char is_repeat = it != curr->visited_nodes->end();
-
-		if (node_stack.size() > MAX_TRACEBACK_STACK_SIZE) {
-			fprintf(stderr, "Traceback stack too big, skipping: ");
-			print_kmer(tracker->curr_node);
-			fprintf(stderr, "\n");
-			fflush(stdout);
-			// Stop processing and clear stack
-			delete curr->visited_nodes;
-			free(curr);
-			while (!node_stack.empty()) {
-				node_tracker* curr = node_stack.top();
-				node_stack.pop();
-				delete curr->visited_nodes;
-				free(curr);
-			}
-
-		} else if (is_repeat || tracker->distance > MAX_DISTANCE_FROM_MARKER) {
-			// Just drop this path
-			if (is_repeat) {
-				fprintf(stderr, "Track back repeat: ");
-			} else {
-				fprintf(stderr, "Track back marker distance exceeded: ");
-			}
-			print_kmer(curr->curr_node);
-			fprintf(stderr, "\n");
-			fflush(stderr);
-			delete curr->visited_nodes;
-			free(curr);
-		} else if (curr->curr_node->fromNodes == NULL) {
-			fprintf(stderr, "Track back root: ");
-			print_kmer(curr->curr_node);
-			fprintf(stderr, "\n");
-			fflush(stderr);
-
-			// We've reached a root, save it
-			pthread_mutex_lock(&marker_trackback_mutex);
-			roots[curr->curr_node->kmer] = curr->curr_node;
-			pthread_mutex_unlock(&marker_trackback_mutex);
-			delete curr->visited_nodes;
-			free(curr);
-		} else {
-
-			// Add current kmer to visited kmers
-			curr->visited_nodes->insert(curr->curr_node->kmer);
-
-			// Increment distance from marker
-			curr->distance += 1;
-
-			// Move to the prev node(s)
-			struct linked_node* from = curr->curr_node->fromNodes;
-			char is_first = 1;
-
-			while (from != NULL) {
-				node_tracker* tracker = NULL;
-
-				if (is_first) {
-					is_first = 0;
-					// Re-use the current tracker node.  Visited nodes are already tracked.
-					tracker = curr;
-				} else {
-					// Allocate new tracker and visited nodes
-					tracker = (node_tracker*) calloc(1, sizeof(node_tracker));
-					tracker->visited_nodes = new sparse_hash_set<const char*, my_hash, eqstr>(*curr->visited_nodes);
-					tracker->distance = curr->distance;
-				}
-
-				tracker->curr_node = from->node;
-				node_stack.push(tracker);
-				fprintf(stderr, "marker traceback pushing: ");
-				print_kmer(tracker->curr_node);
-				fprintf(stderr, "\n");
-				from = from->next;
-			}
-
-			fprintf(stderr, "marker traceback stack size: %d\n", node_stack.size());
-			fflush(stderr);
-		}
-	}
-}
-
-struct marker_thread_info {
-	sparse_hash_map<const char*, struct node*, my_hash, eqstr>* roots;
-	struct node* node;
-};
-
-void* marker_thread(void* t) {
-	marker_thread_info* info = (marker_thread_info*) t;
-
-	get_roots_from_marker(*info->roots, info->node);
-
-	free(info);
-
-	pthread_mutex_lock(&running_thread_mutex);
-	running_threads -= 1;
-	pthread_mutex_unlock(&running_thread_mutex);
-}
-
-
-struct linked_node* get_roots_from_marker_nodes(struct linked_node* markers) {
-
-	fprintf(stderr, "Tracking back from markers\n");
-	fflush(stdout);
-
-	sparse_hash_map<const char*, struct node*, my_hash, eqstr> roots;
-
-	pthread_t threads[MAX_THREADS];
-	int num_threads = 0;
-	running_threads = 0;
-
-	// For each marker node, follow graph backwards to identify true source node(s).
-	int ctr = 0;
-	while (markers != NULL) {
-
-		while (running_threads >= MAX_RUNNING_THREADS) {
-			// Sleep for 10 milliseconds
-			usleep(10*1000);
-		}
-
-		running_threads += 1;
-
-		marker_thread_info* marker_info = (marker_thread_info*) calloc(1, sizeof(marker_thread_info));
-		marker_info->roots = &roots;
-		marker_info->node = markers->node;
-
-		int ret = pthread_create(&(threads[num_threads]), NULL, marker_thread, marker_info);
-		if (ret != 0) {
-			fprintf(stderr, "Error creating thread 1: %d\n", ret);
-			fflush(stderr);
-			exit(-1);
-		}
-
-		fprintf(stderr, "Running threads: %d\n", running_threads);
-
-		num_threads++;
-
-//		get_roots_from_marker(roots, markers->node);
-		markers = markers->next;
-//		printf("Processed marker: %d\n", ctr++);
-//		fflush(stdout);
-	}
-
-	while (running_threads > 0) {
-		// Sleep for 10 milliseconds
-		usleep(10*1000);
-	}
-
-	struct linked_node* source_nodes = NULL;
-
-	int count = 0;
-
-	// Iterate over all map entries to build list of source nodes
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = roots.begin();
-				 it != roots.end(); ++it) {
-
-		const char* key = it->first;
-		struct node* node = it->second;
-
-		struct linked_node* curr;
-
-		if (source_nodes == NULL) {
-			source_nodes = (linked_node*) malloc(sizeof(linked_node));
-			curr = source_nodes;
-		} else {
-			curr->next = (linked_node*) malloc(sizeof(linked_node));
-			curr = curr->next;
-		}
-
-		curr->next = NULL;
-		curr->node = node;
-		count += 1;
-		fprintf(stderr, "Adding source: %d\n", count);
-		fflush(stdout);
-	}
-
-	fprintf(stderr, "Marker trace back yields: %d root nodes\n", count);
-	fflush(stderr);
-
-
-
-	return source_nodes;
 }
 
 struct contig {
@@ -1408,7 +1194,6 @@ char* assemble(const char* input,
 
 	pthread_mutex_init(&running_thread_mutex, NULL);
 	pthread_mutex_init(&contig_writer_mutex, NULL);
-	pthread_mutex_init(&marker_trackback_mutex, NULL);
 
 	struct linked_node* root_nodes = NULL;
 
@@ -1558,7 +1343,6 @@ char* assemble(const char* input,
 
 	pthread_mutex_destroy(&running_thread_mutex);
 	pthread_mutex_destroy(&contig_writer_mutex);
-	pthread_mutex_destroy(&marker_trackback_mutex);
 
 	// Write windows to disk
 	fprintf(stderr, "Writing windows to disk\n");
