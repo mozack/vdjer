@@ -159,14 +159,14 @@ struct node {
 	//TODO: Convert to stl?
 	struct linked_node* toNodes;
 	struct linked_node* fromNodes;
-	char* contributingRead;
-	unsigned char qual_sums[MAX_KMER_LEN];
+//	char* contributingRead;
+//	unsigned char qual_sums[MAX_KMER_LEN];
 	unsigned short frequency;
-	char hasMultipleUniqueReads;
-	char contributing_strand;
-	char root_eligible;
-	char is_simplified;
-	char is_root;
+//	char hasMultipleUniqueReads;
+//	char contributing_strand;
+//	char root_eligible;
+//	char is_simplified;
+//	char is_root;
 };
 
 struct pre_node {
@@ -232,13 +232,13 @@ struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int 
 
 	node* my_node = (node*) calloc(1, sizeof(struct node));
 	my_node->kmer = seq;
-	my_node->contributingRead = contributingRead;
-	my_node->frequency = 1;
-	my_node->hasMultipleUniqueReads = 0;
-	my_node->contributing_strand = (char) strand;
-	for (int i=0; i<kmer_size; i++) {
-		my_node->qual_sums[i] = phred33(quals[i]);
-	}
+//	my_node->contributingRead = contributingRead;
+//	my_node->frequency = 1;
+//	my_node->hasMultipleUniqueReads = 0;
+//	my_node->contributing_strand = (char) strand;
+//	for (int i=0; i<kmer_size; i++) {
+//		my_node->qual_sums[i] = phred33(quals[i]);
+//	}
 	return my_node;
 }
 
@@ -275,25 +275,6 @@ void link_nodes(struct node* from_node, struct node* to_node) {
 	}
 }
 
-void increment_node_freq(struct node* node, char* read_seq, int strand, char* kmer_qual) {
-	if (node->frequency < MAX_FREQUENCY-1) {
-		node->frequency++;
-	}
-
-	if (!(node->hasMultipleUniqueReads) &&
-		(!compare_read(node->contributingRead, read_seq) || node->contributing_strand != (char) strand)) {
-		node->hasMultipleUniqueReads = 1;
-	}
-
-	for (int i=0; i<kmer_size; i++) {
-		unsigned char phred33_qual = phred33(kmer_qual[i]);
-		if ((node->qual_sums[i] + phred33_qual) < MAX_QUAL_SUM-41) {
-			node->qual_sums[i] += phred33_qual;
-		} else {
-			node->qual_sums[i] = MAX_QUAL_SUM;
-		}
-	}
-}
 
 int include_kmer(char* sequence, char*qual, int idx) {
 
@@ -316,6 +297,12 @@ int include_kmer(char* sequence, char*qual, int idx) {
 	return include;
 }
 
+void increment_node_freq(struct node* node) {
+	if (node->frequency < MAX_FREQUENCY-1) {
+		node->frequency++;
+	}
+}
+
 void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char* qual, int strand, char has_roots,
 		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 
@@ -323,17 +310,14 @@ void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_
 
 	for (int i=0; i<=read_length-kmer_size; i++) {
 
-//		if (include_kmer(sequence, qual, i)) {
 		if (pre_nodes.find(sequence+i) != pre_nodes.end()) {
 			char* kmer = get_kmer(i, sequence);
 			char* kmer_qual = get_kmer(i, qual);
 
 			struct node* curr = NULL;
-//			struct node* curr = (*nodes)[kmer];
 
 			if (nodes->find(kmer) == nodes->end()) {
 				curr = new_node(kmer, sequence, pool, strand, kmer_qual);
-				curr->root_eligible = has_roots;
 
 				if (curr == NULL) {
 					fprintf(stderr, "Null node for kmer: %s\n", kmer);
@@ -343,11 +327,7 @@ void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_
 				(*nodes)[kmer] = curr;
 			} else {
 				curr = (*nodes)[kmer];
-
-				if (has_roots && !curr->root_eligible) {
-					curr->root_eligible = 1;
-				}
-				increment_node_freq(curr, sequence, strand, kmer_qual);
+				increment_node_freq(curr);
 			}
 
 			if (prev != NULL) {
@@ -581,10 +561,11 @@ void load_root_similarity_index(dense_hash_set<const char*, vregion_hash, vregio
 }
 
 
+
 int is_root(struct node* node, int& num_root_candidates) {
 	int is_root = 0;
 
-	if (node != NULL && node->root_eligible) {
+	if (node != NULL) {
 		if (node->fromNodes == NULL) {
 			num_root_candidates += 1;
 			is_root = 1;
@@ -1353,8 +1334,6 @@ linked_node* traceback_roots(linked_node* root) {
 		if (tracebacks.find(node->kmer) == tracebacks.end()) {
 
 			if (has_vregion_homology(node->kmer, contig_index)) {
-				node->is_root = 1;
-
 				fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
 				print_kmer(node->kmer);
 				fprintf(stderr, "\n");
