@@ -493,42 +493,6 @@ void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, 
 	fflush(stderr);
 }
 
-struct linked_node* remove_node_from_list(struct node* node, struct linked_node* list) {
-	struct linked_node* node_ptr = list;
-	struct linked_node* prev_ptr = NULL;
-
-	char is_found = false;
-	while ((node_ptr != NULL) && (!is_found)) {
-		if (strncmp(node_ptr->node->kmer, node->kmer, kmer_size) == 0) {
-			if (prev_ptr == NULL) {
-				// Set head of list to next elem
-				list = list->next;
-			} else {
-				// Remove node from list
-				prev_ptr->next = node_ptr->next;
-			}
-
-			// Free linked_node
-			free(node_ptr);
-			is_found = true;
-		} else {
-			prev_ptr = node_ptr;
-			node_ptr = node_ptr->next;
-		}
-	}
-
-	return list;
-}
-
-void cleanup(struct linked_node* linked_nodes) {
-	struct linked_node* ptr = linked_nodes;
-	while (ptr != NULL) {
-		struct linked_node* next = ptr->next;
-		free(ptr);
-		ptr = next;
-	}
-}
-
 int is_base_quality_good(unsigned char* qual_sums) {
 	int is_good = 1;
 
@@ -540,120 +504,6 @@ int is_base_quality_good(unsigned char* qual_sums) {
 	}
 
 	return is_good;
-}
-
-int is_node_base_quality_good(struct node* node) {
-	return is_base_quality_good(node->qual_sums);
-}
-
-void remove_node_and_cleanup(const char* key, struct node* node, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
-
-	if (!node->is_root) {
-		// Remove node from "from" lists
-		struct linked_node* to_node = node->toNodes;
-		while (to_node != NULL) {
-			to_node->node->fromNodes = remove_node_from_list(node, to_node->node->fromNodes);
-			to_node = to_node->next;
-		}
-
-		// Remove node from "to" lists
-		struct linked_node* from_node = node->fromNodes;
-		while (from_node != NULL) {
-			from_node->node->toNodes = remove_node_from_list(node, from_node->node->toNodes);
-			from_node = from_node->next;
-		}
-
-		// Remove node from map
-		nodes->erase(key);
-		cleanup(node->toNodes);
-		node->toNodes = NULL;
-		cleanup(node->fromNodes);
-		node->fromNodes = NULL;
-
-		free(node);
-	}
-}
-
-void prune_low_frequency_edges(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
-
-	long removed_edge_count = 0;
-
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
-				 it != nodes->end(); ++it) {
-
-		const char* key = it->first;
-		node* curr_node = it->second;
-
-		if (curr_node != NULL) {
-			////////////////////////////////////////////////
-			// Check to node list for low frequency edges
-			struct linked_node* to_node = curr_node->toNodes;
-
-			// Calculate total outgoing "edge" frequency
-			int to_node_total_freq = 0;
-
-			while (to_node != NULL) {
-				// Using node frequency as proxy for edge frequency here...
-				to_node_total_freq = to_node_total_freq + to_node->node->frequency;
-				to_node = to_node->next;
-			}
-
-			// Identify edges to prune
-			to_node = curr_node->toNodes;
-			vector<node*> to_nodes_to_remove;
-
-			while (to_node != NULL) {
-				if ( ((double) to_node->node->frequency / (double) to_node_total_freq) < MIN_EDGE_FREQUENCY ) {
-					to_nodes_to_remove.push_back(to_node->node);
-				}
-				to_node = to_node->next;
-			}
-
-			// Remove edges
-			for (vector<node*>::const_iterator iter = to_nodes_to_remove.begin(); iter != to_nodes_to_remove.end(); ++iter ) {
-				// Remove edges in each direction
-				node* node_to_remove = *(iter);
-				node_to_remove->fromNodes = remove_node_from_list(curr_node, node_to_remove->fromNodes);
-				curr_node->toNodes = remove_node_from_list(node_to_remove, curr_node->toNodes);
-				removed_edge_count += 1;
-			}
-
-			////////////////////////////////////////////////
-			// Check from node list for low frequency edges
-			struct linked_node* from_node = curr_node->fromNodes;
-
-			// Calculate total outgoing "edge" frequency
-			int from_node_total_freq = 0;
-
-			while (from_node != NULL) {
-				// Using node frequency as proxy for edge frequency here...
-				from_node_total_freq = from_node_total_freq + from_node->node->frequency;
-				from_node = from_node->next;
-			}
-
-			// Identify edges to prune
-			from_node = curr_node->fromNodes;
-			vector<node*> from_nodes_to_remove;
-
-			while (from_node != NULL) {
-				if ( ((double) from_node->node->frequency / (double) from_node_total_freq) < MIN_EDGE_FREQUENCY ) {
-					from_nodes_to_remove.push_back(from_node->node);
-				}
-				from_node = from_node->next;
-			}
-
-			// Remove edges
-			for (vector<node*>::const_iterator iter = from_nodes_to_remove.begin(); iter != from_nodes_to_remove.end(); ++iter ) {
-				// Remove edges in each direction
-				node* node_to_remove = *(iter);
-				node_to_remove->toNodes = remove_node_from_list(curr_node, node_to_remove->toNodes);
-				curr_node->fromNodes = remove_node_from_list(node_to_remove, curr_node->fromNodes);
-				removed_edge_count += 1;
-			}
-		}
-	}
-
-	fprintf(stderr, "Pruned %ld edges\n", removed_edge_count);
 }
 
 void prune_pre_graph(sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
@@ -677,74 +527,6 @@ void prune_pre_graph(sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre
 
 	pre_nodes.resize(0);
 }
-
-void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, char isUnalignedRegion) {
-
-	// First prune kmers that do not reach base quality sum threshold
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
-				 it != nodes->end(); ++it) {
-
-		const char* key = it->first;
-		struct node* node = it->second;
-
-		if (node != NULL && !is_node_base_quality_good(node)) {
-			remove_node_and_cleanup(key, node, nodes);
-		}
-	}
-
-	fprintf(stderr, "Remaining nodes after pruning step 1: %d\n", nodes->size());
-
-	// Now go back through and ensure that each node reaches minimum frequency threshold.
-	int freq = min_node_freq;
-
-	if (!isUnalignedRegion) {
-		//int increase_freq = nodes->size() / INCREASE_MIN_NODE_FREQ_THRESHOLD;
-		int increase_freq = 0;
-
-		if (increase_freq > 0) {
-			freq = freq + increase_freq;
-			fprintf(stderr, "Increased mnf to: %d for nodes size: %d\n", freq, nodes->size());
-		}
-	}
-
-	if (freq > 1) {
-        fprintf(stderr, "Pruning nodes < frequency: %d\n", freq);
-		for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
-					 it != nodes->end(); ++it) {
-
-			const char* key = it->first;
-			struct node* node = it->second;
-
-			if ((node != NULL) && ((node->frequency < freq) || (!(node->hasMultipleUniqueReads)))) {
-				remove_node_and_cleanup(key, node, nodes);
-			}
-		}
-	}
-
-	fprintf(stderr, "Remaining nodes after pruning step 2: %d\n", nodes->size());
-
-	prune_low_frequency_edges(nodes);
-
-	// Final pass through cleaning up nodes that are unreachable
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
-				 it != nodes->end(); ++it) {
-
-		const char* key = it->first;
-		struct node* node = it->second;
-
-		if (node != NULL && node->toNodes == NULL && node->fromNodes == NULL) {
-			remove_node_and_cleanup(key, node, nodes);
-		}
-	}
-
-	fprintf(stderr, "Remaining nodes after edge pruning: %d\n", nodes->size());
-
-	fprintf(stderr, "Resizing node map\n");
-	nodes->resize(0);
-	fprintf(stderr, "Resizing node map done\n");
-}
-
-
 
 int num_root_candidates = 0;
 
@@ -1486,302 +1268,6 @@ void* worker_thread(void* t) {
 	pthread_mutex_unlock(&running_thread_mutex);
 }
 
-struct simple_node {
-	char* seq;
-	vector<char*>* to_kmers;
-	int id;
-	unsigned short freq1;
-	unsigned short freq2;
-};
-
-int is_simplify_start_point(struct node* node) {
-	int is_start = 0;
-
-	// Root nodes and nodes with multiple incoming edges are
-	// eligible starting points for simplification
-	if (node->fromNodes == NULL) {
-		is_start = 1;
-	} else {
-		linked_node* from = node->fromNodes;
-		if (from->next != NULL) {
-			is_start = 1;
-		}
-	}
-
-	// Nodes with a from node containing multiple outgoing edges
-	// are a simplification start point
-	if (!is_start) {
-		linked_node* from = node->fromNodes;
-
-		if (from->node->toNodes != NULL && from->node->toNodes->next != NULL) {
-			is_start = 1;
-		}
-	}
-
-	return is_start;
-}
-
-int is_simplify_stop_point(struct node* node) {
-	int is_stop = 0;
-
-	// We've reached a stop point if the number of
-	// outgoing edges != 1
-	if (node->toNodes == NULL) {
-		is_stop = 1;
-	} else {
-		linked_node* to = node->toNodes;
-		if (to->next != NULL) {
-			is_stop = 1;
-		}
-	}
-
-	// If the # of outgoing edges is 1 and the to node
-	// has multiple incoming edges, this is a stop point
-	if (!is_stop) {
-		linked_node* to = node->toNodes;
-
-		if (to->node->fromNodes != NULL && to->node->fromNodes->next != NULL) {
-			is_stop = 1;
-		}
-	}
-
-	return is_stop;
-}
-
-sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simplify_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
-
-	sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simple_nodes = new sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>();
-
-	int id = 0;
-	int is_in_linear_path = 0;
-	vector<struct node*> curr_nodes;
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
-				 it != nodes->end(); ++it) {
-
-		const char* key = it->first;
-		struct node* node = it->second;
-
-		if (is_simplify_start_point(node)) {
-			fprintf(stderr, "start point:\n");
-			print_node(node);
-			fprintf(stderr, "-----\n");
-			is_in_linear_path = 1;
-			curr_nodes.clear();
-			curr_nodes.push_back(node);
-
-			struct linked_node* to_node = node->toNodes;
-			// Iterate over all nodes in linear path (skipping singletons)
-			while (to_node != NULL) {
-				node = to_node->node;
-
-//				printf("path:\n");
-//				print_node(node);
-//				printf("\n----\n");
-
-				if (is_simplify_stop_point(node)) {
-					int len = curr_nodes.size();
-					if (node->toNodes == NULL) {
-						len += kmer_size;
-					} else {
-						len += 1;
-					}
-
-					char* seq = (char*) calloc(len+1, sizeof(char));
-					simple_node* compressed_node = (simple_node*) calloc(1, sizeof(simple_node));
-					compressed_node->seq = seq;
-					compressed_node->id = id++;
-					compressed_node->to_kmers = new vector<char*>();
-
-	//				printf("here\n");
-	//				fflush(stdout);
-	//				printf("to_kmers size: %d\n", compressed_node->to_kmers.size());
-	//				fflush(stdout);
-
-					int idx = 0;
-
-					// Extract sequence from nodes in linear path
-					for (vector<struct node*>::iterator node_it = curr_nodes.begin(); node_it != curr_nodes.end(); node_it++) {
-						seq[idx++] = (*node_it)->kmer[0];
-					}
-
-					fprintf(stderr, "to nodes: %x\n", node->toNodes);
-					if (node->toNodes == NULL) {
-						// Last node in path.  Append entire kmer
-						memcpy(&seq[idx], node->kmer, kmer_size);
-					} else {
-						// We've reached a fork in the graph.  Record the to_kmers.
-						seq[idx] = node->kmer[0];
-						struct linked_node* to_node =  node->toNodes;
-						while (to_node != NULL) {
-							fprintf(stderr, "pushing...\n");
-							compressed_node->to_kmers->push_back(to_node->node->kmer);
-							to_node = to_node->next;
-						}
-					}
-
-					curr_nodes.push_back(node);
-
-					compressed_node->freq1 = curr_nodes.front()->frequency;
-					compressed_node->freq2 = node->frequency;
-
-					fprintf(stderr, "seq: %s\n", compressed_node->seq);
-
-					// Use the first kmer contributing to this compressed node as the key into the storage map.
-					if (curr_nodes.front()->fromNodes == NULL && node->toNodes == NULL) {
-						// This is an isolated path.  Keep only if longer than read length.
-						if (strlen(compressed_node->seq) > read_length) {
-							(*simple_nodes)[curr_nodes.front()->kmer] = compressed_node;
-						}
-					} else {
-						(*simple_nodes)[curr_nodes.front()->kmer] = compressed_node;
-					}
-
-					is_in_linear_path = 0;
-					curr_nodes.clear();
-
-					to_node = NULL;
-
-				} else {
-					curr_nodes.push_back(node);
-					// There must be a single to node at this point.
-					// Advance to next node.
-					to_node = node->toNodes;
-				}
-			}
-		}
-	}
-
-	return simple_nodes;
-}
-
-void cleanup_simple_graph(sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simple_nodes) {
-	for (sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>::const_iterator it = simple_nodes->begin();
-				 it != simple_nodes->end(); ++it) {
-
-		const char* kmer = it->first;
-		struct simple_node* curr_node = it->second;
-
-//		simple_nodes->erase(kmer);
-		free(curr_node->seq);
-		delete curr_node->to_kmers;
-		free(curr_node);
-	}
-
-	free(simple_nodes);
-}
-
-void get_seq_str(char* seq, char* buf, int buf_size) {
-	char temp[128];
-
-	memset(buf, 0, buf_size);
-	memset(temp, 0, 128);
-
-	int seq_len = strlen(seq);
-	if (seq_len > 25) {
-		for (int i=0; i<10; i++) {
-			temp[i] = seq[i];
-			temp[13+i] = seq[seq_len-(10-i)-1];
-		}
-		temp[10] = '.';
-		temp[11] = '.';
-		temp[12] = '.';
-	} else {
-		strcpy(temp, seq);
-	}
-
-	sprintf(buf, "%s (%d)", temp, strlen(seq));
-}
-
-void write_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
-
-	sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>* simple_nodes = simplify_graph(nodes);
-
-	const char* filename = "graph.dot";
-
-	FILE *fp = fopen(filename, "w");
-
-	fprintf(fp, "digraph assemblyGraph {\n");
-
-	for (sparse_hash_map<const char*, struct simple_node*, my_hash, eqstr>::const_iterator it = simple_nodes->begin();
-				 it != simple_nodes->end(); ++it) {
-		const char* kmer = it->first;
-		struct simple_node* curr_node = it->second;
-
-		printf("node: %x\n", curr_node);
-		fflush(stdout);
-		printf("to_kmers: %x\n", curr_node->to_kmers);
-		fflush(stdout);
-		printf("to_kmers: %d\n", curr_node->to_kmers->size());
-		fflush(stdout);
-
-		// Output vertex
-		char sequence[128];
-		get_seq_str(curr_node->seq, sequence, 128);
-		fprintf(fp, "\tvertex_%d [label=\"%s\",shape=box]\n", curr_node->id, sequence);
-
-		// Output outgoing edges
-		for (vector<char*>::iterator kmer_it = curr_node->to_kmers->begin(); kmer_it != curr_node->to_kmers->end(); kmer_it++) {
-			char* kmer = (*kmer_it);
-
-			fprintf(stderr, "from_seq: %s\n", curr_node->seq);
-			fflush(stdout);
-			fprintf(stderr, "to_kmer: \n");
-			print_kmer(kmer);
-
-			print_node((*nodes)[kmer]);
-
-			fprintf(stderr, "\n");
-			fflush(stdout);
-
-			if (simple_nodes->find(kmer) != simple_nodes->end()) {
-
-				struct simple_node* to_node = (*simple_nodes)[kmer];
-				fprintf(stderr, "edge to: %x\n", to_node);
-				fflush(stdout);
-
-
-				fprintf(fp, "\tvertex_%d -> vertex_%d [label=\"%d,%d\"];", curr_node->id, to_node->id,
-											curr_node->freq2, to_node->freq1);
-				/*
-				if (to_node != NULL) {
-					fprintf(fp, "\tvertex_%d -> vertex_%d [label=\"%d,%d\"];", curr_node->id, to_node->id,
-							curr_node->freq2, to_node->freq1);
-				} else {
-					printf("Missing to node: \n");
-					print_kmer(kmer);
-					printf("\n-----------\n");
-					fflush(stdout);
-				}
-				*/
-			} else {
-				fprintf(stderr, "Missing to node: ");
-				print_kmer(kmer);
-				fprintf(stderr, "\n-----------\n");
-				fflush(stderr);
-			}
-		}
-	}
-
-	fprintf(fp,"}");
-
-	cleanup_simple_graph(simple_nodes);
-}
-
-void cleanup(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct struct_pool* pool) {
-
-	// Free linked lists
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
-	         it != nodes->end(); ++it) {
-		struct node* node = it->second;
-
-		if (node != NULL) {
-			cleanup(node->toNodes);
-			cleanup(node->fromNodes);
-			free(node);
-		}
-	}
-}
-
 void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
 
 	FILE* fp = fopen(filename, "w");
@@ -1898,6 +1384,30 @@ linked_node* traceback_roots(linked_node* root) {
 	fprintf(stderr, "New roots size: %d\n", tracebacks.size());
 
 	return new_roots;
+}
+
+void cleanup(struct linked_node* linked_nodes) {
+	struct linked_node* ptr = linked_nodes;
+	while (ptr != NULL) {
+		struct linked_node* next = ptr->next;
+		free(ptr);
+		ptr = next;
+	}
+}
+
+void cleanup(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct struct_pool* pool) {
+
+	// Free linked lists
+	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+	         it != nodes->end(); ++it) {
+		struct node* node = it->second;
+
+		if (node != NULL) {
+			cleanup(node->toNodes);
+			cleanup(node->fromNodes);
+			free(node);
+		}
+	}
 }
 
 char* assemble(const char* input,
