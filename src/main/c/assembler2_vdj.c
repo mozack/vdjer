@@ -159,14 +159,7 @@ struct node {
 	//TODO: Convert to stl?
 	struct linked_node* toNodes;
 	struct linked_node* fromNodes;
-//	char* contributingRead;
-//	unsigned char qual_sums[MAX_KMER_LEN];
 	unsigned short frequency;
-//	char hasMultipleUniqueReads;
-//	char contributing_strand;
-//	char root_eligible;
-//	char is_simplified;
-//	char is_root;
 };
 
 struct pre_node {
@@ -303,7 +296,7 @@ void increment_node_freq(struct node* node) {
 	}
 }
 
-void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char* qual, int strand, char has_roots,
+void add_to_graph(char* sequence, dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char* qual, int strand, char has_roots,
 		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 
 	struct node* prev = 0;
@@ -431,7 +424,7 @@ void build_pre_graph(const char* input, sparse_hash_map<const char*, pre_node, m
 }
 
 
-void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char has_roots,
+void build_graph2(const char* input, dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char has_roots,
 		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
@@ -589,13 +582,13 @@ int is_root(struct node* node, int& num_root_candidates) {
 }
 
 
-struct linked_node* identify_root_nodes(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
+struct linked_node* identify_root_nodes(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
 
 	struct linked_node* root_nodes = NULL;
 	int count = 0;
 	int num_root_candidates = 0;
 
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 	         it != nodes->end(); ++it) {
 		struct node* node = it->second;
 
@@ -1249,13 +1242,13 @@ void* worker_thread(void* t) {
 	pthread_mutex_unlock(&running_thread_mutex);
 }
 
-void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
+void dump_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
 
 	FILE* fp = fopen(filename, "w");
 
 	// Output edges
 	fprintf(fp, "digraph vdjician {\n// Edges\n");
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 				 it != nodes->end(); ++it) {
 
 		const char* key = it->first;
@@ -1283,7 +1276,7 @@ void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* node
 
 	// Output vertices
 	fprintf(fp, "// Vertices\n");
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 				 it != nodes->end(); ++it) {
 
 		const char* key = it->first;
@@ -1374,10 +1367,10 @@ void cleanup(struct linked_node* linked_nodes) {
 	}
 }
 
-void cleanup(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct struct_pool* pool) {
+void cleanup(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct struct_pool* pool) {
 
 	// Free linked lists
-	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 	         it != nodes->end(); ++it) {
 		struct node* node = it->second;
 
@@ -1406,11 +1399,12 @@ char* assemble(const char* input,
 	kmer_size = input_kmer_size;
 
 	struct struct_pool* pool = NULL;
-	sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new sparse_hash_map<const char*, struct node*, my_hash, eqstr>();
+	dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new dense_hash_map<const char*, struct node*, my_hash, eqstr>();
+	nodes->set_empty_key(NULL);
 
 	long startTime = time(NULL);
 	fprintf(stderr, "Assembling: -> %s\n", output);
-	nodes->set_deleted_key(NULL);
+
 
 	pthread_mutex_init(&running_thread_mutex, NULL);
 	pthread_mutex_init(&contig_writer_mutex, NULL);
@@ -1443,11 +1437,15 @@ char* assemble(const char* input,
 		root_nodes = identify_root_nodes(nodes);
 
 		build_graph2(unaligned_input, nodes, pool, 0, pre_nodes);
+		print_status("POST_BUILD_GRAPH2");
+
+		pre_nodes.clear();
+		pre_nodes.resize(0);
 	} // End pre_node block
 
-	fprintf(stderr, "Total nodes: %d\n", nodes->size());
+	print_status("POST_GRAPH_BLOCK");
 
-	print_status("POST_BUILD_GRAPH2");
+	fprintf(stderr, "Total nodes: %d\n", nodes->size());
 
 	int status = -1;
 
