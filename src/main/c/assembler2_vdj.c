@@ -1857,9 +1857,9 @@ linked_node* traceback_roots(linked_node* root) {
 		int ctr = 0;  // Don't allow infinite loop
 		while (node->fromNodes != NULL && node->fromNodes->next == NULL & ctr++ < 300) {
 			node = node->fromNodes->node;
-			fprintf(stderr, "\t");
-			print_kmer(node->kmer);
-			fprintf(stderr, "\n");
+//			fprintf(stderr, "\t");
+//			print_kmer(node->kmer);
+//			fprintf(stderr, "\n");
 		}
 
 		fprintf(stderr, "Traceback dist: %d\n", ctr);
@@ -1927,29 +1927,34 @@ char* assemble(const char* input,
 	pthread_mutex_init(&contig_writer_mutex, NULL);
 	pthread_mutex_init(&marker_trackback_mutex, NULL);
 
-	sparse_hash_map<const char*, pre_node, my_hash, eqstr> pre_nodes;
-	pre_nodes.set_deleted_key(NULL);
-
-	print_status("PRE_PRE_GRAPH1");
-	build_pre_graph(input, pre_nodes);
-	print_status("PRE_PRE_GRAPH2");
-	build_pre_graph(unaligned_input, pre_nodes);
-	print_status("POST_PRE_GRAPH1");
-
-	prune_pre_graph(pre_nodes);
-	fprintf(stderr, "pre nodes after pruning: %d\n", pre_nodes.size());
-	print_status("POST_PRUNE_PRE_GRAPH1");
-
-	build_graph2(input, nodes, pool, 1, pre_nodes);
-
-	print_status("POST_BUILD_GRAPH1");
-
-	char isUnalignedRegion = !truncate_on_repeat;
-
 	struct linked_node* root_nodes = NULL;
-	root_nodes = identify_root_nodes(nodes);
 
-	build_graph2(unaligned_input, nodes, pool, 0, pre_nodes);
+	// TODO: Factor out to separate function
+	// Code block here is used to allow pre_nodes to go out of scope and free memory.
+	{
+		sparse_hash_map<const char*, pre_node, my_hash, eqstr> pre_nodes;
+		pre_nodes.set_deleted_key(NULL);
+
+		print_status("PRE_PRE_GRAPH1");
+		build_pre_graph(input, pre_nodes);
+		print_status("PRE_PRE_GRAPH2");
+		build_pre_graph(unaligned_input, pre_nodes);
+		print_status("POST_PRE_GRAPH1");
+
+		prune_pre_graph(pre_nodes);
+		fprintf(stderr, "pre nodes after pruning: %d\n", pre_nodes.size());
+		print_status("POST_PRUNE_PRE_GRAPH1");
+
+		build_graph2(input, nodes, pool, 1, pre_nodes);
+
+		print_status("POST_BUILD_GRAPH1");
+
+		char isUnalignedRegion = !truncate_on_repeat;
+
+		root_nodes = identify_root_nodes(nodes);
+
+		build_graph2(unaligned_input, nodes, pool, 0, pre_nodes);
+	} // End pre_node block
 
 	fprintf(stderr, "Total nodes: %d\n", nodes->size());
 
