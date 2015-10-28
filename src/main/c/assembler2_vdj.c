@@ -44,7 +44,7 @@ extern void quick_map_process_contig(char* contig_id, char* contig, vector<mappe
 extern void quick_map_process_contig_file(char* contig_file);
 
 #define MIN_CONTIG_SIZE 500
-#define MAX_CONTIG_SIZE 650
+#define MAX_CONTIG_SIZE 600
 #define MAX_READ_LENGTH 1001
 #define MAX_FRAGMENT_SIZE 100
 //#define MIN_BASE_QUALITY 20
@@ -169,13 +169,21 @@ struct node {
 	char is_root;
 };
 
+struct pre_node {
+	char* contributingRead;
+	unsigned char qual_sums[MAX_KMER_LEN];
+	unsigned short frequency;
+	char hasMultipleUniqueReads;
+	char contributing_strand;
+};
+
 struct linked_node {
 	struct node* node;
 	struct linked_node* next;
 };
 
-int compare(const char* s1, const char* s2) {
-	return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
+int compare_read(const char* s1, const char* s2) {
+	return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, read_length) == 0);
 }
 
 int compare_kmer(const char* s1, const char* s2) {
@@ -184,6 +192,40 @@ int compare_kmer(const char* s1, const char* s2) {
 
 unsigned char phred33(char ch) {
 	return ch - '!';
+}
+
+void print_kmer(char* kmer) {
+    for (int i=0; i<kmer_size; i++) {
+    	fprintf(stderr, "%c", kmer[i]);
+    }
+}
+
+void print_kmer(struct node* node) {
+	fprintf(stderr, "%x\t", node);
+    for (int i=0; i<kmer_size; i++) {
+    	fprintf(stderr, "%c", node->kmer[i]);
+    }
+}
+
+void print_node(struct node* node) {
+        fprintf(stderr, "kmer: ");
+        print_kmer(node);
+        fprintf(stderr, "\tfrom: ");
+
+        struct linked_node* from = node->fromNodes;
+        while (from != NULL) {
+        	print_kmer(from->node);
+        	fprintf(stderr, ",");
+        	from = from->next;
+        }
+
+        fprintf(stderr, "\tto: ");
+        struct linked_node* to = node->toNodes;
+        while (to != NULL) {
+        	print_kmer(to->node);
+        	fprintf(stderr, ",");
+        	to = to->next;
+        }
 }
 
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
@@ -239,7 +281,7 @@ void increment_node_freq(struct node* node, char* read_seq, int strand, char* km
 	}
 
 	if (!(node->hasMultipleUniqueReads) &&
-		(!compare(node->contributingRead, read_seq) || node->contributing_strand != (char) strand)) {
+		(!compare_read(node->contributingRead, read_seq) || node->contributing_strand != (char) strand)) {
 		node->hasMultipleUniqueReads = 1;
 	}
 
@@ -274,19 +316,22 @@ int include_kmer(char* sequence, char*qual, int idx) {
 	return include;
 }
 
-void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char* qual, int strand, char has_roots) {
+void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char* qual, int strand, char has_roots,
+		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 
 	struct node* prev = 0;
 
 	for (int i=0; i<=read_length-kmer_size; i++) {
 
-		if (include_kmer(sequence, qual, i)) {
+//		if (include_kmer(sequence, qual, i)) {
+		if (pre_nodes.find(sequence+i) != pre_nodes.end()) {
 			char* kmer = get_kmer(i, sequence);
 			char* kmer_qual = get_kmer(i, qual);
 
-			struct node* curr = (*nodes)[kmer];
+			struct node* curr = NULL;
+//			struct node* curr = (*nodes)[kmer];
 
-			if (curr == NULL) {
+			if (nodes->find(kmer) == nodes->end()) {
 				curr = new_node(kmer, sequence, pool, strand, kmer_qual);
 				curr->root_eligible = has_roots;
 
@@ -297,6 +342,8 @@ void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_
 
 				(*nodes)[kmer] = curr;
 			} else {
+				curr = (*nodes)[kmer];
+
 				if (has_roots && !curr->root_eligible) {
 					curr->root_eligible = 1;
 				}
@@ -313,8 +360,8 @@ void add_to_graph(char* sequence, sparse_hash_map<const char*, struct node*, my_
 		}
 	}
 }
-/*
-void add_to_table(char* sequence, sparse_hash_map<const char*, struct pre_node, my_hash, eqstr>& pre_table, char* qual, int strand) {
+
+void add_to_table(char* sequence, sparse_hash_map<const char*, pre_node, my_hash, eqstr> & pre_table, char* qual, int strand) {
 
 	for (int i=0; i<=read_length-kmer_size; i++) {
 
@@ -322,45 +369,46 @@ void add_to_table(char* sequence, sparse_hash_map<const char*, struct pre_node, 
 			char* kmer = get_kmer(i, sequence);
 			char* kmer_qual = get_kmer(i, qual);
 
-			struct pre_node curr;
+			pre_node node;
 
-			if (pre_table.find[kmer] == pre_table.end()) {
-				curr.contributingRead = contributingRead;
-				curr.frequency = 1;
-				curr.hasMultipleUniqueReads = 0;
-				curr.contributing_strand = (char) strand;
+			if (pre_table.find(kmer) == pre_table.end()) {
+				node.contributingRead = sequence;
+				node.frequency = 1;
+				node.hasMultipleUniqueReads = 0;
+				node.contributing_strand = (char) strand;
 				for (int i=0; i<kmer_size; i++) {
-					curr.qual_sums[i] = phred33(qual[i]);
+					node.qual_sums[i] = phred33(qual[i]);
 				}
 
-				pre_table[kmer] = curr;
+				pre_table[kmer] = node;
 			} else {
-				if (node->frequency < MAX_FREQUENCY-1) {
-					node->frequency++;
+				node = pre_table[kmer];
+
+				if (node.frequency < MAX_FREQUENCY-1) {
+					node.frequency++;
 				}
 
-				if (!(node->hasMultipleUniqueReads) &&
-					(!compare(node->contributingRead, read_seq) || node->contributing_strand != (char) strand)) {
-					node->hasMultipleUniqueReads = 1;
+				if (!(node.hasMultipleUniqueReads) &&
+					(!compare_read(node.contributingRead, sequence) || node.contributing_strand != (char) strand)) {
+					node.hasMultipleUniqueReads = 1;
 				}
 
 				for (int i=0; i<kmer_size; i++) {
 					unsigned char phred33_qual = phred33(kmer_qual[i]);
-					if ((node->qual_sums[i] + phred33_qual) < MAX_QUAL_SUM-41) {
-						node->qual_sums[i] += phred33_qual;
+					if ((node.qual_sums[i] + phred33_qual) < MAX_QUAL_SUM-41) {
+						node.qual_sums[i] += phred33_qual;
 					} else {
-						node->qual_sums[i] = MAX_QUAL_SUM;
+						node.qual_sums[i] = MAX_QUAL_SUM;
 					}
 				}
 
-
-				increment_node_freq(curr, sequence, strand, kmer_qual);
+				pre_table[kmer] = node;
 			}
 		}
 	}
 }
 
-void build_pre_graph(const char* input, sparse_hash_map<const char*, struct node*, my_hash, eqstr>& pre_nodes) {
+void build_pre_graph(const char* input, sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
 
@@ -370,7 +418,7 @@ void build_pre_graph(const char* input, sparse_hash_map<const char*, struct node
 	const char* ptr = input;
 	int num_reads = 0;
 
-	while ((record < num_records) && (nodes->size() < MAX_NODES)) {
+	while ((record < num_records) && (pre_nodes.size() < MAX_NODES)) {
 		ptr = &(input[record*record_len]);
 		int strand = 0;
 
@@ -388,24 +436,23 @@ void build_pre_graph(const char* input, sparse_hash_map<const char*, struct node
 		char* qual_ptr = (char*) &(ptr[read_length+1]);
 
 		// Add to hash table
-
-
-		add_to_graph(read_ptr, nodes, pool, qual_ptr, strand, has_roots);
+		add_to_table(read_ptr, pre_nodes, qual_ptr, strand);
 		record++;
 
 		if ((record % 1000000) == 0) {
-			fprintf(stderr, "record_count: %d\n", record);
+			fprintf(stderr, "pre_record_count: %d\n", record);
 			fflush(stdout);
 		}
 	}
 
-	fprintf(stderr, "Num reads: %d\n", record);
-	fprintf(stderr, "Num nodes: %d\n", nodes->size());
+	fprintf(stderr, "Pre Num reads: %d\n", record);
+	fprintf(stderr, "Pre Num nodes: %d\n", pre_nodes.size());
 	fflush(stderr);
 }
-*/
 
-void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char has_roots) {
+
+void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char has_roots,
+		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
 
@@ -432,7 +479,7 @@ void build_graph2(const char* input, sparse_hash_map<const char*, struct node*, 
 		char* read_ptr = (char*) &(ptr[1]);
 
 		char* qual_ptr = (char*) &(ptr[read_length+1]);
-		add_to_graph(read_ptr, nodes, pool, qual_ptr, strand, has_roots);
+		add_to_graph(read_ptr, nodes, pool, qual_ptr, strand, has_roots, pre_nodes);
 		record++;
 
 		if ((record % 1000000) == 0) {
@@ -482,17 +529,21 @@ void cleanup(struct linked_node* linked_nodes) {
 	}
 }
 
-int is_base_quality_good(struct node* node) {
+int is_base_quality_good(unsigned char* qual_sums) {
 	int is_good = 1;
 
 	for (int i=0; i<kmer_size; i++) {
-		if (node->qual_sums[i] < min_base_quality) {
+		if (qual_sums[i] < min_base_quality) {
 			is_good = 0;
 			break;
 		}
 	}
 
 	return is_good;
+}
+
+int is_node_base_quality_good(struct node* node) {
+	return is_base_quality_good(node->qual_sums);
 }
 
 void remove_node_and_cleanup(const char* key, struct node* node, sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
@@ -605,6 +656,28 @@ void prune_low_frequency_edges(sparse_hash_map<const char*, struct node*, my_has
 	fprintf(stderr, "Pruned %ld edges\n", removed_edge_count);
 }
 
+void prune_pre_graph(sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
+
+	pre_nodes.set_deleted_key(NULL);
+	for (sparse_hash_map<const char*, pre_node, my_hash, eqstr>::const_iterator it = pre_nodes.begin();
+			it != pre_nodes.end(); ++it) {
+
+		const char* key = it->first;
+		pre_node node = it->second;
+
+//		fprintf(stderr, "prenode: %d\t%d\t%d\t%d\n", node.frequency, node.hasMultipleUniqueReads, node.qual_sums[0], node.qual_sums[34]);
+
+		if ((node.frequency < min_node_freq) ||
+			!(node.hasMultipleUniqueReads) ||
+			!is_base_quality_good(node.qual_sums)) {
+
+			pre_nodes.erase(key);
+		}
+	}
+
+	pre_nodes.resize(0);
+}
+
 void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, char isUnalignedRegion) {
 
 	// First prune kmers that do not reach base quality sum threshold
@@ -614,7 +687,7 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 		const char* key = it->first;
 		struct node* node = it->second;
 
-		if (node != NULL && !is_base_quality_good(node)) {
+		if (node != NULL && !is_node_base_quality_good(node)) {
 			remove_node_and_cleanup(key, node, nodes);
 		}
 	}
@@ -671,39 +744,6 @@ void prune_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* nod
 	fprintf(stderr, "Resizing node map done\n");
 }
 
-void print_kmer(char* kmer) {
-    for (int i=0; i<kmer_size; i++) {
-    	fprintf(stderr, "%c", kmer[i]);
-    }
-}
-
-void print_kmer(struct node* node) {
-	fprintf(stderr, "%x\t", node);
-    for (int i=0; i<kmer_size; i++) {
-    	fprintf(stderr, "%c", node->kmer[i]);
-    }
-}
-
-void print_node(struct node* node) {
-        fprintf(stderr, "kmer: ");
-        print_kmer(node);
-        fprintf(stderr, "\tfrom: ");
-
-        struct linked_node* from = node->fromNodes;
-        while (from != NULL) {
-        	print_kmer(from->node);
-        	fprintf(stderr, ",");
-        	from = from->next;
-        }
-
-        fprintf(stderr, "\tto: ");
-        struct linked_node* to = node->toNodes;
-        while (to != NULL) {
-        	print_kmer(to->node);
-        	fprintf(stderr, ",");
-        	to = to->next;
-        }
-}
 
 
 int num_root_candidates = 0;
@@ -712,14 +752,18 @@ char has_vregion_homology(char* kmer, dense_hash_set<const char*, vregion_hash, 
 
 	char is_homologous = 0;
 
-	int stop =  kmer_size - VREGION_KMER_SIZE;
+	if (VREGION_KMER_SIZE > 1) {
+		int stop =  kmer_size - VREGION_KMER_SIZE;
 
-	// Identify hits in hash index
-	for (int i=0; i<stop; i++) {
-		if (contig_index.find(kmer+i) != contig_index.end()) {
-			is_homologous = 1;
-			break;
+		// Identify hits in hash index
+		for (int i=0; i<stop; i++) {
+			if (contig_index.find(kmer+i) != contig_index.end()) {
+				is_homologous = 1;
+				break;
+			}
 		}
+	} else {
+		is_homologous = 1;
 	}
 
 	return is_homologous;
@@ -761,30 +805,17 @@ int is_root(struct node* node, int& num_root_candidates) {
 	if (node != NULL && node->root_eligible) {
 		if (node->fromNodes == NULL) {
 			num_root_candidates += 1;
-			if ((node->frequency >= min_node_freq) && (node->hasMultipleUniqueReads) && is_base_quality_good(node)) {
+			is_root = 1;
 
-//				int score = score_seq(node->kmer, kmer_size);
-//				if (score >= MIN_ROOT_SIMILARITY) {
+			fprintf(stderr, "ROOT_INIT:\t%d\t", node->frequency);
+			print_kmer(node->kmer);
+			fprintf(stderr, "\n");
 
-//				if (has_vregion_homology(node->kmer, contig_index)) {
-					is_root = 1;
-//					node->is_root = 1;
-
-					fprintf(stderr, "ROOT_INIT:\t%d\t", node->frequency);
-					print_kmer(node->kmer);
-					fprintf(stderr, "\n");
-//				} else {
-//					fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
-//					print_kmer(node->kmer);
-//					fprintf(stderr, "\n");
-//				}
-			}
 		} else {
 			// Identify nodes that point to themselves with no other incoming edges.
 			// This will be cleaned up during contig building.
 			struct linked_node* from = node->fromNodes;
 			if (from->next == NULL && (strncmp(node->kmer, from->node->kmer, kmer_size) == 0)) {
-//				is_root = 1;
 				fprintf(stderr, "SELF_ROOT\n");
 			}
 		}
@@ -1441,6 +1472,10 @@ void* worker_thread(void* t) {
 			if ((processed_nodes % 100) == 0) {
 				fprintf(stderr, "Processed roots: %d\n", processed_nodes);
 			}
+		} else {
+			fprintf(stderr, "Skipping root: ");
+			print_kmer(source->kmer);
+			fprintf(stderr, "\n");
 		}
 
 		root = root->next;
@@ -1751,6 +1786,36 @@ void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* node
 
 	FILE* fp = fopen(filename, "w");
 
+	// Output edges
+	fprintf(fp, "digraph vdjician {\n// Edges\n");
+	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+				 it != nodes->end(); ++it) {
+
+		const char* key = it->first;
+		node* curr_node = it->second;
+
+		struct linked_node* to_node = curr_node->toNodes;
+
+		while (to_node != NULL) {
+			// Copy current node to output buf
+			char output[1024];
+			memset(output, 0, 1024);
+			strncpy(output, curr_node->kmer, kmer_size);
+			int idx = kmer_size;
+			strncpy(&(output[idx]), " -> ", 4);
+			idx += 4;
+
+			strncpy(&(output[idx]), to_node->node->kmer, kmer_size);
+			idx += kmer_size;
+			output[idx] = ';';
+
+			fprintf(fp, "\t%s\n", output);
+			to_node = to_node->next;
+		}
+	}
+
+	// Output vertices
+	fprintf(fp, "// Vertices\n");
 	for (sparse_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 				 it != nodes->end(); ++it) {
 
@@ -1761,34 +1826,17 @@ void dump_graph(sparse_hash_map<const char*, struct node*, my_hash, eqstr>* node
 		memset(output, 0, 1024);
 		strncpy(output, curr_node->kmer, kmer_size);
 		int idx = kmer_size;
-		strncpy(&(output[idx]), "->", 2);
-		idx += 2;
+		strncpy(&(output[idx]), ";", 1);
 
-		if (curr_node != NULL) {
-			////////////////////////////////////////////////
-			// Check to node list for low frequency edges
-			struct linked_node* to_node = curr_node->toNodes;
-
-			while (to_node != NULL) {
-				strncpy(&(output[idx]), to_node->node->kmer, kmer_size);
-				idx += kmer_size;
-				output[idx] = ',';
-				idx += 1;
-				to_node = to_node->next;
-			}
-		}
-
-		fprintf(fp, "%s\n", output);
+		fprintf(fp, "\t%s\n", output);
 	}
+
+	fprintf(fp, "}\n");
 
 	fclose(fp);
 }
 
 linked_node* traceback_roots(linked_node* root) {
-
-//	dense_hash_set<const char*, vregion_hash, vregion_eqstr> contig_index;
-//	contig_index.set_empty_key(NULL);
-//	load_root_similarity_index(contig_index);
 
 	linked_node* new_roots = NULL;
 	linked_node* new_roots_ptr = NULL;
@@ -1798,19 +1846,23 @@ linked_node* traceback_roots(linked_node* root) {
 
 	while (root != NULL) {
 		struct node* node = root->node;
+
 		//
 		// Walk backwards in graph in until there are no more nodes or
 		// a fork in the graph
 		int ctr = 0;  // Don't allow infinite loop
 		while (node->fromNodes != NULL && node->fromNodes->next == NULL & ctr++ < 300) {
 			node = node->fromNodes->node;
+			fprintf(stderr, "\t");
+			print_kmer(node->kmer);
+			fprintf(stderr, "\n");
 		}
 
 		fprintf(stderr, "Traceback dist: %d\n", ctr);
 
 		if (tracebacks.find(node->kmer) == tracebacks.end()) {
 
-//			if (has_vregion_homology(node->kmer, contig_index)) {
+			if (has_vregion_homology(node->kmer, contig_index)) {
 				node->is_root = 1;
 
 				fprintf(stderr, "ROOT_NODE:\t%d\t", node->frequency);
@@ -1829,11 +1881,11 @@ linked_node* traceback_roots(linked_node* root) {
 				new_roots_ptr->node = node;
 				new_roots_ptr->next = NULL;
 
-//			} else {
-//				fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
-//				print_kmer(node->kmer);
-//				fprintf(stderr, "\n");
-//			}
+			} else {
+				fprintf(stderr, "FILTERED_NODE:\t%d\t", node->frequency);
+				print_kmer(node->kmer);
+				fprintf(stderr, "\n");
+			}
 		}
 
 		root = root->next;
@@ -1871,23 +1923,33 @@ char* assemble(const char* input,
 	pthread_mutex_init(&contig_writer_mutex, NULL);
 	pthread_mutex_init(&marker_trackback_mutex, NULL);
 
-	build_graph2(input, nodes, pool, 1);
+	sparse_hash_map<const char*, pre_node, my_hash, eqstr> pre_nodes;
+	pre_nodes.set_deleted_key(NULL);
+
+	print_status("PRE_PRE_GRAPH1");
+	build_pre_graph(input, pre_nodes);
+	print_status("PRE_PRE_GRAPH2");
+	build_pre_graph(unaligned_input, pre_nodes);
+	print_status("POST_PRE_GRAPH1");
+
+	prune_pre_graph(pre_nodes);
+	fprintf(stderr, "pre nodes after pruning: %d\n", pre_nodes.size());
+	print_status("POST_PRUNE_PRE_GRAPH1");
+
+	build_graph2(input, nodes, pool, 1, pre_nodes);
 
 	print_status("POST_BUILD_GRAPH1");
 
 	char isUnalignedRegion = !truncate_on_repeat;
-	fprintf(stderr, "Prune graph 1...\n");
-	fflush(stdout);
-	prune_graph(nodes, isUnalignedRegion);
-	print_status("POST_PRUNE_GRAPH1");
 
 	struct linked_node* root_nodes = NULL;
 	root_nodes = identify_root_nodes(nodes);
 
-	if (unaligned_input != NULL) {
-		build_graph2(unaligned_input, nodes, pool, 0);
-		print_status("POST_BUILD_GRAPH2");
-	}
+	build_graph2(unaligned_input, nodes, pool, 0, pre_nodes);
+
+	fprintf(stderr, "Total nodes: %d\n", nodes->size());
+
+	print_status("POST_BUILD_GRAPH2");
 
 	int status = -1;
 
@@ -1896,17 +1958,11 @@ char* assemble(const char* input,
 		fprintf(stderr, "Graph too complex for region: %s\n", prefix);
 	}
 
-	fprintf(stderr, "Prune graph 2...\n");
-	fflush(stdout);
-	prune_graph(nodes, isUnalignedRegion);
-	fprintf(stderr, "Prune graph 2 Done...\n");
-	fflush(stdout);
-
 	root_nodes = traceback_roots(root_nodes);
 
-	print_status("POST_PRUNE_GRAPH2");
+	print_status("POST_ROOT_TRACEBACK");
 
-	dump_graph(nodes, "graph.txt");
+	dump_graph(nodes, "graph.dot");
 
 
 	// The initial set of root nodes are used as markers (or breadcrumbs)
@@ -2141,5 +2197,6 @@ int main(int argc, char* argv[]) {
                 read_len,
                 kmer);
 }
+
 
 
