@@ -47,7 +47,6 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MAX_CONTIG_SIZE 600
 #define MAX_READ_LENGTH 1001
 #define MAX_FRAGMENT_SIZE 100
-//#define MIN_BASE_QUALITY 20
 #define INCREASE_MIN_NODE_FREQ_THRESHOLD 2500
 
 #define MAX_TOTAL_CONTIG_LEN 10000000
@@ -77,9 +76,6 @@ extern void quick_map_process_contig_file(char* contig_file);
 
 #define MIN_EDGE_FREQUENCY -1
 
-// TODO: This should vary be kmer len
-//#define MIN_ROOT_HOMOLOGY_SCORE 25
-
 // Must be greater than the number of  source(root) nodes - TODO: re-use threads and allocate dynamically.
 #define MAX_THREADS 1000000
 
@@ -101,53 +97,24 @@ dense_hash_set<const char*, contig_hash, contig_eqstr> vjf_windows;
 
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
 
-// #define MAX_TRACEBACK_STACK_SIZE 1024
-#define MAX_TRACEBACK_STACK_SIZE 256
-
-
-//TODO: Better variable localization
-//__thread int read_length;
-//__thread int min_contig_length;
-//__thread int kmer_size;
-//__thread int min_node_freq;
-//__thread int min_base_quality;
-
 int read_length;
 int kmer_size;
 int min_node_freq;
 int min_base_quality;
 
-//#define MIN_CONTIG_SCORE -6
 float MIN_CONTIG_SCORE;
 
 int CONTIG_SIZE;
 int INSERT_LEN;
 int FILTER_READ_FLOOR;
-//int MIN_ROOT_SIMILARITY;
 char* ROOT_SIMILARITY_FILE;
 int VREGION_KMER_SIZE;
 
 struct struct_pool {
-//	struct node_pool* node_pool;
-//	struct read_pool* read_pool;
+	struct node* nodes;
+	int idx;
+	int size;
 };
-
-//#define NODES_PER_BLOCK 5000000
-//#define MAX_NODE_BLOCKS 50000
-//#define READS_PER_BLOCK 1000000
-//#define MAX_READ_BLOCKS 100000
-
-//struct node_pool {
-//	struct node** nodes;
-//	int block_idx;
-//	int node_idx;
-//};
-//
-//struct read_pool {
-//	char** reads;
-//	int block_idx;
-//	int read_idx;
-//};
 
 struct node {
 
@@ -220,15 +187,17 @@ void print_node(struct node* node) {
 
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
 
-	node* my_node = (node*) calloc(1, sizeof(struct node));
+//	node* my_node = (node*) calloc(1, sizeof(struct node));
+
+	if (pool->idx >= pool->size) {
+		fprintf(stderr, "TOO MANY NODES!!! idx: %d, size: %d\n", pool->idx, pool->size);
+		exit(-1);
+	}
+
+	node* my_node = &(pool->nodes[pool->idx++]);
 	my_node->kmer = seq;
-//	my_node->contributingRead = contributingRead;
-//	my_node->frequency = 1;
-//	my_node->hasMultipleUniqueReads = 0;
-//	my_node->contributing_strand = (char) strand;
-//	for (int i=0; i<kmer_size; i++) {
-//		my_node->qual_sums[i] = phred33(quals[i]);
-//	}
+	my_node->frequency = 1;
+
 	return my_node;
 }
 
@@ -531,7 +500,6 @@ void add_to_index(char* contig, dense_hash_set<const char*, vregion_hash, vregio
 }
 
 void load_root_similarity_index(dense_hash_set<const char*, vregion_hash, vregion_eqstr>& contig_index) {
-//	contig_index.set_deleted_key(NULL);
 	char* contig = (char*) calloc(VREGION_BUF_MAX, sizeof(char));
 
 	FILE* fp = fopen(ROOT_SIMILARITY_FILE, "r");
@@ -1184,7 +1152,8 @@ char* assemble(const char* input,
 
 	kmer_size = input_kmer_size;
 
-	struct struct_pool* pool = NULL;
+	struct_pool* pool = (struct_pool*) calloc(1, sizeof(struct_pool));
+
 	dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes = new dense_hash_map<const char*, struct node*, my_hash, eqstr>();
 	nodes->set_empty_key(NULL);
 
@@ -1212,6 +1181,11 @@ char* assemble(const char* input,
 		prune_pre_graph(pre_nodes);
 		fprintf(stderr, "pre nodes after pruning: %d\n", pre_nodes.size());
 		print_status("POST_PRUNE_PRE_GRAPH1");
+
+		int node_size = pre_nodes.size()+3;
+		pool->nodes = (struct node*) calloc(pre_nodes.size()+1, sizeof(struct node));
+		pool->idx = 0;
+		pool->size = node_size;
 
 		build_graph2(input, nodes, pool, 1, pre_nodes);
 
@@ -1245,21 +1219,11 @@ char* assemble(const char* input,
 
 	dump_graph(nodes, "graph.dot");
 
-
-	// The initial set of root nodes are used as markers (or breadcrumbs)
-	// We start from a marker and follow the trail back to the true source nodes
-//	root_nodes = get_roots_from_marker_nodes(root_nodes);
-
-//	if (status != TOO_MANY_NODES) {
-//		root_nodes = identify_root_nodes(nodes);
-//	}
-
 	int contig_count = 0;
 	char truncate_output = 0;
 
 	char* contig_str = (char*) malloc(MAX_TOTAL_CONTIG_LEN);
 	memset(contig_str, 0, MAX_TOTAL_CONTIG_LEN);
-
 
 	pthread_t threads[MAX_THREADS];
 	int num_threads = 0;
