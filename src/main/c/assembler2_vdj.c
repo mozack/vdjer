@@ -120,10 +120,13 @@ struct node {
 
 	//TODO: Collapse from 8 to 2 bits.  Only store as key.
 	char* kmer;
+	char* seq;
 	//TODO: Convert to stl?
 	struct linked_node* toNodes;
 	struct linked_node* fromNodes;
 	unsigned short frequency;
+	char is_condensed;
+	char is_root;
 };
 
 struct pre_node {
@@ -543,7 +546,73 @@ int is_root(struct node* node, int& num_root_candidates) {
 	}
 
 	return is_root;
+}
 
+char has_one_incoming_edge(struct node* node) {
+	return node->fromNodes != NULL && node->fromNodes->next == NULL;
+}
+
+char has_one_outgoing_edge(struct node* node) {
+	return node->toNodes != NULL && node->toNodes->next == NULL;
+}
+
+int condensed_seq_size = 1000000;
+int condensed_seq_idx = 0;
+char* condensed_seq = (char*) calloc(condensed_seq_size, sizeof(char));
+
+char* get_condensed_seq_buf() {
+	if (condensed_seq_idx + MAX_CONTIG_SIZE+1 >= condensed_seq_size) {
+		condensed_seq_idx = 0;
+		condensed_seq = (char*) calloc(condensed_seq_size, sizeof(char));
+	}
+
+	return condensed_seq + condensed_seq_idx;
+}
+
+void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
+	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
+	         it != nodes->end(); ++it) {
+		struct node* node = it->second;
+
+		// Starting point 0 or >1 incoming edges, 1 outgoing edge
+		if (!has_one_incoming_edge(node) && has_one_outgoing_edge(node)) {
+			struct node* next = node->toNodes->node;
+			struct node* last = next;
+
+			if (has_one_incoming_edge(next)) {
+				//TODO: Use a pool and be more miserly here.
+				int idx = 0;
+//				char* seq = (char*) calloc(MAX_CONTIG_SIZE+1, sizeof(char));
+				char* seq = get_condensed_seq_buf();
+				seq[idx++] = node->kmer[0];
+
+				int nodes_condensed = 1;
+
+				while (next != NULL && has_one_incoming_edge(next) && nodes_condensed < MAX_CONTIG_SIZE) {
+					last = next;
+					seq[idx++] = next->kmer[0];
+					if (has_one_outgoing_edge(next)) {
+						next = next->toNodes->node;
+					} else {
+						next = NULL;
+					}
+					nodes_condensed += 1;
+				}
+
+//				fprintf(stderr, "Condensed: ");
+//				print_kmer(node->kmer);
+//				fprintf(stderr, "\t%s\n", seq);
+
+				// Advance condensed seq buffer idx
+				condensed_seq_idx += (strlen(seq) + 1);
+
+				// Update node
+				node->seq = seq;
+				node->is_condensed = 1;
+				node->toNodes = last->toNodes;
+			}
+		}
+	}
 }
 
 
@@ -697,7 +766,10 @@ int total_contigs = 0;
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
 
 	if (contig->real_size >= MIN_CONTIG_SIZE) {
-		char buf[MAX_CONTIG_SIZE+1];
+
+//		fprintf(stderr, "CONTIG_SIZE: %d\n", contig->real_size);
+		// Allow some slack for condensed seq overrun
+		char buf[MAX_CONTIG_SIZE*2+1];
 		total_contigs += 1;
 		if ((total_contigs % 100000) == 0) {
 			fprintf(stderr, "contig_candidates: %d\n", total_contigs);
@@ -706,12 +778,15 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 		buf[0] = '\0';
 
+		int length = 0;
 		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
-			strcat(buf, *it);
+			int to_cat = MAX_CONTIG_SIZE - length;
+			strncat(buf, *it, to_cat);
+			length += strlen(*it);
 		}
 
-		if (strlen(contig->seq) > 0) {
-			strcat(buf, contig->seq);
+		if (strlen(contig->seq) > 0 && length < MAX_CONTIG_SIZE) {
+			strncat(buf, contig->seq, MAX_CONTIG_SIZE - length);
 		}
 
 
@@ -798,27 +873,53 @@ void output_windows() {
 
 void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments, char entire_kmer) {
 	int add_len = 1;
-	if (entire_kmer) {
+
+	if (contig->curr_node->is_condensed) {
+		add_len = strlen(contig->curr_node->seq);
+		if (entire_kmer && add_len > kmer_size) {
+			add_len = kmer_size;
+		}
+	} else if (entire_kmer) {
 		add_len = kmer_size;
 	}
 
-	if (contig->size+add_len < MAX_FRAGMENT_SIZE) {
-		contig->fragments->push_back(contig->seq);
+	if (contig->curr_node->is_condensed) {
+		// Add current sequence to fragment vector
+		// Necessary to preserve order
+		if (contig->size > 0) {
+			contig->fragments->push_back(contig->seq);
+			// track fragments for cleanup later
+			all_contig_fragments.push_back(contig->seq);
 
-		// track fragments for cleanup later
-		all_contig_fragments.push_back(contig->seq);
+			contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
+			contig->size = 0;  // Reset index (not really size)
+		}
 
-		contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
-		contig->size = 0;  // Reset index (not really size)
-	}
-
-	if (!entire_kmer) {
-		contig->seq[contig->size++] = contig->curr_node->kmer[0];
-		contig->real_size += 1;
+		// Add condensed node sequence to fragment vector
+		contig->fragments->push_back(contig->curr_node->seq);
+		contig->real_size += strlen(contig->curr_node->seq);
 	} else {
-		strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
-		contig->size += kmer_size;
-		contig->real_size += kmer_size;
+		// If new sequence does not fit into current fragment,
+		// allocate anew
+		if (contig->size+add_len > MAX_FRAGMENT_SIZE) {
+			contig->fragments->push_back(contig->seq);
+
+			// track fragments for cleanup later
+			all_contig_fragments.push_back(contig->seq);
+
+			contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
+			contig->size = 0;  // Reset index (not really size)
+		}
+
+		// Now add the new sequence (either a single base or entire kmer)
+		if (!entire_kmer) {
+			contig->seq[contig->size++] = contig->curr_node->kmer[0];
+			contig->real_size += 1;
+		} else {
+			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
+			contig->size += kmer_size;
+			contig->real_size += kmer_size;
+		}
 	}
 }
 
@@ -841,7 +942,7 @@ int build_contigs(
 
 	// Track all contig fragments
 	// Initialize to reasonably large number to avoid reallocations
-	int INIT_FRAGMENTS_PER_THREAD = 10000000;
+	int INIT_FRAGMENTS_PER_THREAD = 1000000;
 	vector<char*> all_contig_fragments;
 	all_contig_fragments.reserve(INIT_FRAGMENTS_PER_THREAD);
 
@@ -983,9 +1084,9 @@ void* worker_thread(void* t) {
 				fprintf(stderr, "Processed roots: %d\n", processed_nodes);
 			}
 		} else {
-			fprintf(stderr, "Skipping root: ");
-			print_kmer(source->kmer);
-			fprintf(stderr, "\n");
+//			fprintf(stderr, "Skipping root: ");
+//			print_kmer(source->kmer);
+//			fprintf(stderr, "\n");
 		}
 
 		root = root->next;
@@ -1085,6 +1186,7 @@ linked_node* traceback_roots(linked_node* root) {
 				print_kmer(node->kmer);
 				fprintf(stderr, "\n");
 
+				node->is_root = 1;
 				tracebacks.insert(node->kmer);
 				if (new_roots == NULL) {
 					new_roots = (linked_node*) calloc(1, sizeof(linked_node));
@@ -1131,7 +1233,6 @@ void cleanup(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, s
 		if (node != NULL) {
 			cleanup(node->toNodes);
 			cleanup(node->fromNodes);
-			free(node);
 		}
 	}
 }
@@ -1206,6 +1307,7 @@ char* assemble(const char* input,
 
 	fprintf(stderr, "Total nodes: %d\n", nodes->size());
 
+
 	int status = -1;
 
 	if (nodes->size() >= MAX_NODES) {
@@ -1217,7 +1319,13 @@ char* assemble(const char* input,
 
 	print_status("POST_ROOT_TRACEBACK");
 
-	dump_graph(nodes, "graph.dot");
+	fprintf(stderr, "Condensing graph\n");
+	condense_graph(nodes);
+	fprintf(stderr, "Condense graph done\n");
+
+	print_status("POST_CONDENSE_GRAPH");
+
+//	dump_graph(nodes, "graph.dot");
 
 	int contig_count = 0;
 	char truncate_output = 0;
@@ -1313,7 +1421,7 @@ char* assemble(const char* input,
 	output_windows();
 
 	print_status("PRE_CLEANUP");
-	cleanup(nodes, pool);
+//	cleanup(nodes, pool);
 	delete nodes;
 	print_status("POST_CLEANUP");
 
