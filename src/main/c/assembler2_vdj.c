@@ -124,9 +124,11 @@ struct node {
 	//TODO: Convert to stl?
 	struct linked_node* toNodes;
 	struct linked_node* fromNodes;
+	int id;
 	unsigned short frequency;
 	char is_condensed;
 	char is_root;
+	char is_filtered;
 };
 
 struct pre_node {
@@ -188,6 +190,8 @@ void print_node(struct node* node) {
         }
 }
 
+int node_id = 1;
+
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
 
 //	node* my_node = (node*) calloc(1, sizeof(struct node));
@@ -200,6 +204,7 @@ struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int 
 	node* my_node = &(pool->nodes[pool->idx++]);
 	my_node->kmer = seq;
 	my_node->frequency = 1;
+	my_node->id = node_id++;
 
 	return my_node;
 }
@@ -556,6 +561,18 @@ char has_one_outgoing_edge(struct node* node) {
 	return node->toNodes != NULL && node->toNodes->next == NULL;
 }
 
+char prev_has_multiple_outgoing_edges(struct node* node) {
+	char prev_bifurcates = 0;
+	if (has_one_incoming_edge(node)) {
+		struct node* prev = node->fromNodes->node;
+		if (prev->toNodes != NULL && prev->toNodes->next != NULL) {
+			prev_bifurcates = 1;
+		}
+	}
+
+	return prev_bifurcates;
+}
+
 int condensed_seq_size = 1000000;
 int condensed_seq_idx = 0;
 char* condensed_seq = (char*) calloc(condensed_seq_size, sizeof(char));
@@ -569,33 +586,42 @@ char* get_condensed_seq_buf() {
 	return condensed_seq + condensed_seq_idx;
 }
 
+// NOTE: From nodes are invalid after this step!!!
 void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes) {
 	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 	         it != nodes->end(); ++it) {
 		struct node* node = it->second;
 
-		// Starting point 0 or >1 incoming edges, 1 outgoing edge
-		if (!has_one_incoming_edge(node) && has_one_outgoing_edge(node)) {
+		// Starting point 0 or >1 incoming edges or previous node with multiple outgoing edges and curr node has 1 outgoing edge
+		if ((!has_one_incoming_edge(node) || prev_has_multiple_outgoing_edges(node)) && has_one_outgoing_edge(node)) {
 			struct node* next = node->toNodes->node;
-			struct node* last = next;
 
 			if (has_one_incoming_edge(next)) {
-				//TODO: Use a pool and be more miserly here.
+				struct linked_node* last = next->toNodes;
+
 				int idx = 0;
-//				char* seq = (char*) calloc(MAX_CONTIG_SIZE+1, sizeof(char));
 				char* seq = get_condensed_seq_buf();
 				seq[idx++] = node->kmer[0];
 
 				int nodes_condensed = 1;
 
 				while (next != NULL && has_one_incoming_edge(next) && nodes_condensed < MAX_CONTIG_SIZE) {
-					last = next;
+					last = next->toNodes;
 					seq[idx++] = next->kmer[0];
+					struct node* temp = NULL;
+
 					if (has_one_outgoing_edge(next)) {
-						next = next->toNodes->node;
+						temp = next->toNodes->node;
 					} else {
-						next = NULL;
+						temp = NULL;
 					}
+
+//					next->toNodes = NULL;
+//					next->fromNodes = NULL;
+					next->is_filtered = 1;
+
+					next = temp;
+
 					nodes_condensed += 1;
 				}
 
@@ -609,7 +635,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 				// Update node
 				node->seq = seq;
 				node->is_condensed = 1;
-				node->toNodes = last->toNodes;
+				node->toNodes = last;
 			}
 		}
 	}
@@ -1102,53 +1128,66 @@ void dump_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes
 	FILE* fp = fopen(filename, "w");
 
 	// Output edges
-	fprintf(fp, "digraph vdjician {\n// Edges\n");
+	fprintf(fp, "digraph vdjician {\n//\tEdges\n");
 	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 				 it != nodes->end(); ++it) {
 
 		const char* key = it->first;
 		node* curr_node = it->second;
 
-		struct linked_node* to_node = curr_node->toNodes;
+		if (!curr_node->is_filtered) {
+			struct linked_node* to_node = curr_node->toNodes;
 
-		while (to_node != NULL) {
-			// Copy current node to output buf
-			char output[1024];
-			memset(output, 0, 1024);
-			strncpy(output, curr_node->kmer, kmer_size);
-			int idx = kmer_size;
-			strncpy(&(output[idx]), " -> ", 4);
-			idx += 4;
-
-			strncpy(&(output[idx]), to_node->node->kmer, kmer_size);
-			idx += kmer_size;
-			output[idx] = ';';
-
-			fprintf(fp, "\t%s\n", output);
-			to_node = to_node->next;
+			while (to_node != NULL) {
+				fprintf(fp, "\tv_%d -> v_%d\n", curr_node->id, to_node->node->id);
+				to_node = to_node->next;
+			}
 		}
 	}
 
+	int num_vertices = 0;
+	int num_condensed = 0;
+
 	// Output vertices
-	fprintf(fp, "// Vertices\n");
+	fprintf(fp, "//\tVertices\n");
 	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 				 it != nodes->end(); ++it) {
 
 		const char* key = it->first;
 		node* curr_node = it->second;
 
-		char output[1024];
-		memset(output, 0, 1024);
-		strncpy(output, curr_node->kmer, kmer_size);
-		int idx = kmer_size;
-		strncpy(&(output[idx]), ";", 1);
+		// Skip orphans
+		if (!curr_node->is_filtered && (curr_node->toNodes != NULL || curr_node->fromNodes != NULL)) {
+			if (curr_node->is_condensed) {
+				if (curr_node->is_root) {
+					fprintf(fp, "\tv_%d [label=\"%s\",shape=box,color=green]\n", curr_node->id, curr_node->seq);
+				} else {
+					fprintf(fp, "\tv_%d [label=\"%s\",shape=box,color=blue]\n", curr_node->id, curr_node->seq);
+				}
+				num_condensed += 1;
+			} else {
+				char buf[50];
+				strncpy(buf, curr_node->kmer, kmer_size);
+				buf[kmer_size] = '\0';
+				if (curr_node->is_root) {
+//					fprintf(fp, "\tv_%d [label=\"%s\",shape=box,color=red]\n", curr_node->id, buf);
+					fprintf(fp, "\tv_%d [label=\"%c\",shape=box,color=red]\n", curr_node->id, curr_node->kmer[0]);
+				} else {
+//					fprintf(fp, "\tv_%d [label=\"%s\",shape=box]\n", curr_node->id, buf);
+					fprintf(fp, "\tv_%d [label=\"%c\",shape=box]\n", curr_node->id, curr_node->kmer[0]);
+				}
+			}
 
-		fprintf(fp, "\t%s\n", output);
+			num_vertices += 1;
+		}
 	}
 
 	fprintf(fp, "}\n");
 
 	fclose(fp);
+
+	fprintf(stderr, "Num traversable vertices: %d\n", num_vertices);
+	fprintf(stderr, "Num condensed vertices: %d\n", num_condensed);
 }
 
 linked_node* traceback_roots(linked_node* root) {
@@ -1325,7 +1364,7 @@ char* assemble(const char* input,
 
 	print_status("POST_CONDENSE_GRAPH");
 
-//	dump_graph(nodes, "graph.dot");
+	dump_graph(nodes, "vdjician.dot");
 
 	int contig_count = 0;
 	char truncate_output = 0;
