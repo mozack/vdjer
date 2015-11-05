@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stack>
 #include <list>
+#include <queue>
 #include <utility>
 #include <vector>
 #include <sparsehash/sparse_hash_map>
@@ -143,6 +144,8 @@ struct linked_node {
 	struct node* node;
 	struct linked_node* next;
 };
+
+
 
 int compare_read(const char* s1, const char* s2) {
 	return (s1 == s2) || (s1 && s2 && strncmp(s1, s2, read_length) == 0);
@@ -1078,16 +1081,44 @@ int build_contigs(
 
 int processed_nodes = 0;
 
+struct thread_info {
+	queue<struct node*> roots;
+	pthread_mutex_t mutex;
+	pthread_t thread;
+};
+
+int num_roots_in_thread(thread_info* thread) {
+	int count = -1;
+	pthread_mutex_lock(&thread->mutex);
+	count = thread->roots.size();
+	pthread_mutex_unlock(&thread->mutex);
+
+	return count;
+}
+
+struct node* get_next_root(thread_info* thread) {
+	struct node* root = NULL;
+	pthread_mutex_lock(&thread->mutex);
+	if (!thread->roots.empty()) {
+		root = thread->roots.front();
+		thread->roots.pop();
+	}
+	pthread_mutex_unlock(&thread->mutex);
+	return root;
+}
+
+char all_roots_processed = 0;
+
 //TODO: Use thread pool instead of spawning threads
 void* worker_thread(void* t) {
 
-	struct linked_node* root = (struct linked_node*) t;
+	thread_info* thread = (thread_info*) t;
 
-	while (root != NULL) {
+	while (num_roots_in_thread(thread) > 0 || !all_roots_processed) {
 
-		struct node* source = root->node;
+		struct node* source = get_next_root(thread);
 
-		if (score_seq(source->kmer, MIN_ROOT_HOMOLOGY_SCORE)) {
+		if (source != NULL && score_seq(source->kmer, MIN_ROOT_HOMOLOGY_SCORE)) {
 
 			int contig_count = 0;
 			const char* prefix = "foo";
@@ -1114,13 +1145,11 @@ void* worker_thread(void* t) {
 //			print_kmer(source->kmer);
 //			fprintf(stderr, "\n");
 		}
-
-		root = root->next;
 	}
 
-	pthread_mutex_lock(&running_thread_mutex);
-	running_threads -= 1;
-	pthread_mutex_unlock(&running_thread_mutex);
+//	pthread_mutex_lock(&running_thread_mutex);
+//	running_threads -= 1;
+//	pthread_mutex_unlock(&running_thread_mutex);
 }
 
 void dump_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
@@ -1276,6 +1305,73 @@ void cleanup(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, s
 	}
 }
 
+#define MAX_ROOTS_PER_THREAD 10
+
+thread_info threads[100];
+
+void process_roots(linked_node* root_nodes) {
+
+	// Initialize threads and root mutex
+	for (int i=0; i<MAX_RUNNING_THREADS; i++) {
+		pthread_mutex_init(&threads[i].mutex, NULL);
+		int ret = pthread_create(&threads[i].thread, NULL, worker_thread, &threads[i]);
+
+		if (ret != 0) {
+			fprintf(stderr, "Error creating thread 1: %d\n", ret);
+			fflush(stdout);
+			exit(-1);
+		}
+	}
+
+	time_t te = 0;
+	time_t ts = 0;
+	int num_roots = 0;
+
+	while (root_nodes != NULL) {
+
+		char is_root_added = 0;
+		int i = 0;
+		while (!is_root_added && i < MAX_RUNNING_THREADS) {
+			pthread_mutex_lock(&threads[i].mutex);
+			if (threads[i].roots.size() < MAX_ROOTS_PER_THREAD) {
+				threads[i].roots.push(root_nodes->node);
+				is_root_added = 1;
+				num_roots++;
+			}
+			pthread_mutex_unlock(&threads[i].mutex);
+			i++;
+		}
+
+		if (!is_root_added) {
+			// All threads busy, sleep for 10 milliseconds
+			usleep(10*1000);
+			is_root_added = 0;
+		} else {
+			root_nodes = root_nodes->next;
+		}
+
+		if ((num_roots % 10) == 0) {
+			fprintf(stderr, "Processed %d root nodes\n", num_roots);
+			fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
+			fprintf(stderr, "Window candidate size: %d\n", vjf_window_candidates.size());
+		}
+
+		te = time(NULL);
+		if (te-ts > 300) {
+			print_status("STATUS_UPDATE");
+			ts = te;
+		}
+	}
+
+	// Signal to threads that all roots have been processed and
+	// wait for them to finish.
+	all_roots_processed = 1;
+
+	for (int i=0; i<MAX_RUNNING_THREADS; i++) {
+		pthread_join(threads[i].thread, NULL);
+	}
+}
+
 char* assemble(const char* input,
 			   const char* unaligned_input,
 			  const char* output,
@@ -1299,7 +1395,6 @@ char* assemble(const char* input,
 
 	long startTime = time(NULL);
 	fprintf(stderr, "Assembling: -> %s\n", output);
-
 
 	pthread_mutex_init(&running_thread_mutex, NULL);
 	pthread_mutex_init(&contig_writer_mutex, NULL);
@@ -1372,83 +1467,10 @@ char* assemble(const char* input,
 	char* contig_str = (char*) malloc(MAX_TOTAL_CONTIG_LEN);
 	memset(contig_str, 0, MAX_TOTAL_CONTIG_LEN);
 
-	pthread_t threads[MAX_THREADS];
-	int num_threads = 0;
-	running_threads = 0;
-
-	int num_roots = 0;
 	pthread_mutex_init(&running_thread_mutex, NULL);
 	pthread_mutex_init(&contig_writer_mutex, NULL);
 
-	linked_node* root_link = NULL;
-
-	long ts = time(NULL);
-	long te = time(NULL);
-
-	while (root_nodes != NULL) {
-
-		while (running_threads >= MAX_RUNNING_THREADS) {
-			te = time(NULL);
-			if (te-ts > 300) {
-				print_status("STATUS_UPDATE");
-				ts = te;
-			}
-			// Sleep for 10 milliseconds
-			usleep(10*1000);
-		}
-
-		int ROOT_NODES_PER_THREADS = 10;
-
-		int root_count = 1;
-		linked_node* next_root_start = root_nodes;
-		linked_node* last = root_nodes;
-		while (root_nodes != NULL && root_count < ROOT_NODES_PER_THREADS) {
-			root_nodes = root_nodes->next;
-			if (root_nodes != NULL) {
-				last = root_nodes;
-			}
-			num_roots++;
-			root_count += 1;
-		}
-
-		root_nodes = last->next;
-		last->next = NULL;
-
-		running_threads += 1;
-		int ret = pthread_create(&(threads[num_threads]), NULL, worker_thread, next_root_start);
-
-
-		if (ret != 0) {
-			fprintf(stderr, "Error creating thread 1: %d\n", ret);
-			fflush(stdout);
-			exit(-1);
-		}
-
-		fprintf(stderr, "Running threads: %d\n", running_threads);
-
-		num_threads++;
-
-		if ((num_roots % 10) == 0) {
-			fprintf(stderr, "Processed %d root nodes\n", num_roots);
-			fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
-			fprintf(stderr, "Window candidate size: %d\n", vjf_window_candidates.size());
-			fflush(stdout);
-//			print_status("STATUS_UPDATE");
-
-		}
-	}
-
-	// Wait for all threads to complete
-	while (running_threads > 0) {
-		te = time(NULL);
-		if (te-ts > 300) {
-			print_status("STATUS_UPDATE");
-			ts = te;
-		}
-		// Sleep for 10 milliseconds
-		usleep(10*1000);
-
-	}
+	process_roots(root_nodes);
 
 	print_status("THREADS_DONE");
 
