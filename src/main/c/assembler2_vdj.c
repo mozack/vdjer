@@ -22,6 +22,7 @@
 #include "hash_utils.h"
 #include "vj_filter.h"
 #include "quick_map3.h"
+#include "seq_dist.h"
 
 using namespace std;
 using google::sparse_hash_map;
@@ -131,6 +132,7 @@ struct node {
 	char is_condensed;
 	char is_root;
 	char is_filtered;
+	char has_vmer;
 };
 
 struct pre_node {
@@ -293,6 +295,13 @@ void add_to_graph(char* sequence, dense_hash_map<const char*, struct node*, my_h
 				if (curr == NULL) {
 					fprintf(stderr, "Null node for kmer: %s\n", kmer);
 					exit(-1);
+				}
+
+				// Check to see if this node contains a vmer
+				unsigned long n_kmer = seq_to_int(kmer);
+
+				if (matches_vmer(n_kmer)) {
+					curr->has_vmer = 1;
 				}
 
 				(*nodes)[kmer] = curr;
@@ -608,6 +617,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 				seq[idx++] = node->kmer[0];
 
 				int nodes_condensed = 1;
+				char has_vmer = node->has_vmer;
 
 				while (next != NULL && has_one_incoming_edge(next) && nodes_condensed < MAX_CONTIG_SIZE) {
 					last = next->toNodes;
@@ -623,6 +633,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 //					next->toNodes = NULL;
 //					next->fromNodes = NULL;
 					next->is_filtered = 1;
+					has_vmer = has_vmer || next->has_vmer;
 
 					next = temp;
 
@@ -640,6 +651,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 				node->seq = seq;
 				node->is_condensed = 1;
 				node->toNodes = last;
+				node->has_vmer = has_vmer;
 			}
 		}
 	}
@@ -683,6 +695,7 @@ struct contig {
 	int size;  // really curr_index now
 	int real_size;
 	char is_repeat;
+	char has_vmer;
 };
 
 struct contig* new_contig() {
@@ -696,6 +709,7 @@ struct contig* new_contig() {
 //	curr_contig->visited_nodes->resize(MAX_CONTIG_SIZE);
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
+	curr_contig->has_vmer = 0;
 
 	return curr_contig;
 }
@@ -725,6 +739,7 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 	//copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
 	copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	copy->score = orig->score;
+	copy->has_vmer = orig->has_vmer;
 
 	return copy;
 
@@ -795,7 +810,7 @@ int total_contigs = 0;
 
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
 
-	if (contig->real_size >= MIN_CONTIG_SIZE) {
+	if (contig->real_size >= MIN_CONTIG_SIZE && contig->has_vmer) {
 
 //		fprintf(stderr, "CONTIG_SIZE: %d\n", contig->real_size);
 		// Allow some slack for condensed seq overrun
@@ -902,6 +917,9 @@ void output_windows() {
 }
 
 void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments, char entire_kmer) {
+
+	contig->has_vmer = contig->has_vmer || contig->curr_node->has_vmer;
+
 	int add_len = 1;
 
 	if (contig->curr_node->is_condensed) {
