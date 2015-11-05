@@ -23,6 +23,7 @@ void print_status(char* desc) {
 
 	time_t curr_time = time(NULL);
 	fprintf(stderr, "ELAPSED_SECS\t%s\t%ld\t%ld\n", desc, curr_time - status_start_time, curr_time-status_prev_time);
+	status_prev_time = curr_time;
 	print_file("/proc/self/status", "PROC_STATUS", desc);
 	print_file("/proc/buddyinfo", "BUDDY_INFO", desc);
 	char prefix[256];
