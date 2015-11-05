@@ -15,4 +15,7 @@ void vjf_search(char* contig, google::dense_hash_set<const char*, vjf_hash, vjf_
 // Return true if the input kmer matches a cached vmer
 char matches_vmer(unsigned long kmer);
 
+// Return true if the input kmer matches a cached vmer
+char matches_jmer(unsigned long kmer);
+
 #endif

@@ -133,6 +133,7 @@ struct node {
 	char is_root;
 	char is_filtered;
 	char has_vmer;
+	char has_jmer;
 };
 
 struct pre_node {
@@ -302,6 +303,10 @@ void add_to_graph(char* sequence, dense_hash_map<const char*, struct node*, my_h
 
 				if (matches_vmer(n_kmer)) {
 					curr->has_vmer = 1;
+				}
+
+				if (matches_jmer(n_kmer)) {
+					curr->has_jmer = 1;
 				}
 
 				(*nodes)[kmer] = curr;
@@ -618,6 +623,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 
 				int nodes_condensed = 1;
 				char has_vmer = node->has_vmer;
+				char has_jmer = node->has_jmer;
 
 				while (next != NULL && has_one_incoming_edge(next) && nodes_condensed < MAX_CONTIG_SIZE) {
 					last = next->toNodes;
@@ -634,6 +640,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 //					next->fromNodes = NULL;
 					next->is_filtered = 1;
 					has_vmer = has_vmer || next->has_vmer;
+					has_jmer = has_jmer || next->has_jmer;
 
 					next = temp;
 
@@ -652,6 +659,7 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 				node->is_condensed = 1;
 				node->toNodes = last;
 				node->has_vmer = has_vmer;
+				node->has_jmer = has_jmer;
 			}
 		}
 	}
@@ -696,6 +704,7 @@ struct contig {
 	int real_size;
 	char is_repeat;
 	char has_vmer;
+	char has_jmer;
 };
 
 struct contig* new_contig() {
@@ -710,6 +719,7 @@ struct contig* new_contig() {
 	curr_contig->score = 0;
 	curr_contig->fragments = new vector<char*>();
 	curr_contig->has_vmer = 0;
+	curr_contig->has_jmer = 0;
 
 	return curr_contig;
 }
@@ -740,6 +750,7 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 	copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	copy->score = orig->score;
 	copy->has_vmer = orig->has_vmer;
+	copy->has_jmer = orig->has_jmer;
 
 	return copy;
 
@@ -810,7 +821,7 @@ int total_contigs = 0;
 
 void output_contig(struct contig* contig, int& contig_count, const char* prefix, char* contigs) {
 
-	if (contig->real_size >= MIN_CONTIG_SIZE && contig->has_vmer) {
+	if (contig->real_size >= MIN_CONTIG_SIZE && contig->has_vmer && contig->has_jmer) {
 
 //		fprintf(stderr, "CONTIG_SIZE: %d\n", contig->real_size);
 		// Allow some slack for condensed seq overrun
@@ -919,6 +930,7 @@ void output_windows() {
 void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments, char entire_kmer) {
 
 	contig->has_vmer = contig->has_vmer || contig->curr_node->has_vmer;
+	contig->has_jmer = contig->has_jmer || contig->curr_node->has_jmer;
 
 	int add_len = 1;
 
