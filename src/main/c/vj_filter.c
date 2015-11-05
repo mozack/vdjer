@@ -179,6 +179,7 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW && *j >= *v) {
 
 				strncpy(cdr3, contig+*v, window);
+				cdr3[window] = '\0';
 
 //				if (PRINT_CDR3_INDEX) {
 //					fprintf(stderr, "contig: [%s]\t cdr3: [%s]\tV: [%d]\tJ: [%d]\n", contig, cdr3, *v, *j);
@@ -203,12 +204,15 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, vjf_hash, vjf_e
 	return false;
 }
 
+// Thread local CDR3 buffer
+__thread char* vjf_cdr3_block_buffer;
+
 void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
 
 	// Allocate space for up to 100 CDR3's
 	// TODO: Re-use memory (or shrink and move to stack?)
-	char* cdr3_block = (char*) calloc(1024L*100L, sizeof(char));
-	char* orig_cdr3_block = cdr3_block;
+	char* cdr3_block = vjf_cdr3_block_buffer;
+//	char* orig_cdr3_block = cdr3_block;
 
 	sparse_hash_set<const char*, vjf_hash, vjf_eqstr> cdr3_seq;
 
@@ -287,7 +291,7 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 		}
 	}
 
-	free(orig_cdr3_block);
+//	free(orig_cdr3_block);
 }
 
 void init(char* v_file, char* j_file, int max_dist) {

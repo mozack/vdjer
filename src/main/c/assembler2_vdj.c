@@ -47,7 +47,8 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MIN_CONTIG_SIZE 500
 #define MAX_CONTIG_SIZE 600
 #define MAX_READ_LENGTH 1001
-#define MAX_FRAGMENT_SIZE 100
+//TODO: Set to kmer_size + 1 ???
+#define MAX_FRAGMENT_SIZE 36
 #define INCREASE_MIN_NODE_FREQ_THRESHOLD 2500
 
 #define MAX_TOTAL_CONTIG_LEN 10000000
@@ -930,7 +931,7 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 	} else {
 		// If new sequence does not fit into current fragment,
 		// allocate anew
-		if (contig->size+add_len > MAX_FRAGMENT_SIZE) {
+		if (contig->size+add_len >= MAX_FRAGMENT_SIZE) {
 			contig->fragments->push_back(contig->seq);
 
 			// track fragments for cleanup later
@@ -960,7 +961,8 @@ int build_contigs(
 		int max_contigs,
 		char stop_on_repeat,
 		char shadow_mode,
-		char* contig_str) {
+		char* contig_str,
+		vector<char*> & all_contig_fragments) {
 
 	int status = OK;
 	stack<contig*> contigs;
@@ -972,7 +974,7 @@ int build_contigs(
 	// Track all contig fragments
 	// Initialize to reasonably large number to avoid reallocations
 	int INIT_FRAGMENTS_PER_THREAD = 1000000;
-	vector<char*> all_contig_fragments;
+	all_contig_fragments.clear();
 	all_contig_fragments.reserve(INIT_FRAGMENTS_PER_THREAD);
 
 	int paths_from_root = 1;
@@ -987,12 +989,10 @@ int build_contigs(
 			fprintf(stderr, "\n");
 			// We've encountered a repeat
 			contig->is_repeat = 1;
-			if ((!shadow_mode) && (!stop_on_repeat)) {
-				output_contig(contig, contig_count, prefix, contig_str);
-				free_contig(contig);
-			} else {
-				popped_contigs.push(contig);
-			}
+
+			output_contig(contig, contig_count, prefix, contig_str);
+			free_contig(contig);
+
 			contigs.pop();
 			if (stop_on_repeat) {
 				status = STOPPED_ON_REPEAT;
@@ -1004,13 +1004,9 @@ int build_contigs(
 			append_to_contig(contig, all_contig_fragments, 1);
 
 			// Now, write the contig
-			if (!shadow_mode) {
-				// only output at sink node
-				output_contig(contig, contig_count, prefix, contig_str);
-				free_contig(contig);
-			} else {
-				popped_contigs.push(contig);
-			}
+			output_contig(contig, contig_count, prefix, contig_str);
+			free_contig(contig);
+
 			contigs.pop();
 		}
 		else {
@@ -1048,7 +1044,8 @@ int build_contigs(
 				paths_from_root++;
 			}
 
-			contig->score = contig->score + log10(contig->curr_node->frequency) - log10(total_edge_count);
+//			contig->score = contig->score + log10(contig->curr_node->frequency) - log10(total_edge_count);
+			contig->score = contig->score + log10(contig->curr_node->frequency) - log10_total_edge_count;
 		}
 
 		if (contig_count >= max_contigs) {
@@ -1075,6 +1072,8 @@ int build_contigs(
 	for (vector<char*>::iterator it=all_contig_fragments.begin(); it != all_contig_fragments.end(); ++it) {
 		free(*it);
 	}
+
+	all_contig_fragments.clear();
 
 	return status;
 }
@@ -1113,6 +1112,8 @@ char all_roots_processed = 0;
 void* worker_thread(void* t) {
 
 	thread_info* thread = (thread_info*) t;
+	vjf_cdr3_block_buffer = (char*) calloc(1024L*1000L, sizeof(char));
+	vector<char*> all_contig_fragments;
 
 	while (num_roots_in_thread(thread) > 0 || !all_roots_processed) {
 
@@ -1128,7 +1129,7 @@ void* worker_thread(void* t) {
 			char shadow_mode = false;
 			char* contig_str = NULL;
 			int status = build_contigs(source, contig_count, prefix, max_paths_from_root, max_contigs, stop_on_repeat,
-					shadow_mode, contig_str);
+					shadow_mode, contig_str, all_contig_fragments);
 
 			if (status != OK) {
 				fprintf(stderr, "Status: %d\n", status);
@@ -1348,12 +1349,12 @@ void process_roots(linked_node* root_nodes) {
 			is_root_added = 0;
 		} else {
 			root_nodes = root_nodes->next;
-		}
 
-		if ((num_roots % 10) == 0) {
-			fprintf(stderr, "Processed %d root nodes\n", num_roots);
-			fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
-			fprintf(stderr, "Window candidate size: %d\n", vjf_window_candidates.size());
+			if ((num_roots % 100) == 0) {
+				fprintf(stderr, "Processed %d root nodes\n", num_roots);
+				fprintf(stderr, "Num candidate contigs: %d\n", vjf_windows.size());
+				fprintf(stderr, "Window candidate size: %d\n", vjf_window_candidates.size());
+			}
 		}
 
 		te = time(NULL);
