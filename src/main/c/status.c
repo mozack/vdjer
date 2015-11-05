@@ -17,10 +17,12 @@ void print_file(char* filename, char* file_info, char* desc) {
 }
 
 time_t status_start_time = time(NULL);
+time_t status_prev_time = time(NULL);
 
 void print_status(char* desc) {
 
-	fprintf(stderr, "ELAPSED_SECS:\t%ld", time(NULL) - status_start_time);
+	time_t curr_time = time(NULL);
+	fprintf(stderr, "ELAPSED_SECS\t%s\t%ld\t%ld\n", curr_time - status_start_time, curr_time-status_prev_time);
 	print_file("/proc/self/status", "PROC_STATUS", desc);
 	print_file("/proc/buddyinfo", "BUDDY_INFO", desc);
 	char prefix[256];
