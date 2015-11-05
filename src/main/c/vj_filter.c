@@ -53,10 +53,10 @@ struct kmer_hash
 	}
 };
 
-sparse_hash_set<unsigned long, kmer_hash, eqkmer>* vmers;
-sparse_hash_set<unsigned long, kmer_hash, eqkmer>* jmers;
+dense_hash_set<unsigned long, kmer_hash, eqkmer>* vmers;
+dense_hash_set<unsigned long, kmer_hash, eqkmer>* jmers;
 
-void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* kmers, int max_dist) {
+void load_kmers(char* input, dense_hash_set<unsigned long, kmer_hash, eqkmer>* kmers, int max_dist) {
 	FILE* in = fopen(input, "r");
 
 	unsigned long kmer;
@@ -71,12 +71,12 @@ void load_kmers(char* input, sparse_hash_set<unsigned long, kmer_hash, eqkmer>* 
 }
 
 char matches_vmer(unsigned long kmer) {
-	sparse_hash_set<unsigned long, kmer_hash, eqkmer>::const_iterator it = vmers->find(kmer);
+	dense_hash_set<unsigned long, kmer_hash, eqkmer>::const_iterator it = vmers->find(kmer);
 	return it != vmers->end();
 }
 
 char matches_jmer(unsigned long kmer) {
-	sparse_hash_set<unsigned long, kmer_hash, eqkmer>::const_iterator it = jmers->find(kmer);
+	dense_hash_set<unsigned long, kmer_hash, eqkmer>::const_iterator it = jmers->find(kmer);
 	return it != jmers->end();
 }
 
@@ -297,8 +297,11 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 void init(char* v_file, char* j_file, int max_dist) {
 	pthread_mutex_init(&vjf_mutex, NULL);
 
-	vmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
-	jmers = new sparse_hash_set<unsigned long, kmer_hash, eqkmer>();
+	vmers = new dense_hash_set<unsigned long, kmer_hash, eqkmer>();
+	jmers = new dense_hash_set<unsigned long, kmer_hash, eqkmer>();
+
+	vmers->set_empty_key(0);
+	jmers->set_empty_key(0);
 
 	fprintf(stderr, "Loading vmers\n");
 	fflush(stderr);
