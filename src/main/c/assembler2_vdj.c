@@ -90,7 +90,7 @@ pthread_mutex_t contig_writer_mutex;
 int running_threads = 0;
 
 // Tracks vjf windows
-dense_hash_set<const char*, contig_hash, contig_eqstr> vjf_windows;
+dense_hash_map<const char*, const char*, contig_hash, contig_eqstr> vjf_windows;
 
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
 
@@ -764,8 +764,8 @@ char contains_seq(dense_hash_set<const char*, vjf_hash, vjf_eqstr>& seq_set, cha
 	return it != seq_set.end();
 }
 
-char contains_seq(dense_hash_set<const char*, contig_hash, contig_eqstr>& seq_set, char* seq) {
-	dense_hash_set<const char*, contig_hash, contig_eqstr>::const_iterator it = seq_set.find(seq);
+char contains_seq(dense_hash_map<const char*, const char*, contig_hash, contig_eqstr>& seq_set, char* seq) {
+	dense_hash_map<const char*, const char*, contig_hash, contig_eqstr>::const_iterator it = seq_set.find(seq);
 	return it != seq_set.end();
 }
 
@@ -795,13 +795,17 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 		}
 
 		// Search for V / J anchors and add to hash set.
-		dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
+		dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
 		vjf_windows_temp.set_empty_key(NULL);
 		vjf_search(buf, vjf_windows_temp);
 
 //		fprintf(stderr, "CONTIG_CANDIDATE: %s\t%d\n", buf, vjf_windows_temp.size());
 
-		for (dense_hash_set<const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows_temp.begin(); it!=vjf_windows_temp.end(); it++) {
+		for (dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>::iterator it=vjf_windows_temp.begin(); it!=vjf_windows_temp.end(); it++) {
+
+			char* window = (char*) it->first;
+			char* cdr3 = (char*) it->second;
+
 			char is_to_be_processed = 0;
 			char contig_id[256];
 
@@ -815,10 +819,10 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 			// TODO: Use RW lock here?
 			pthread_mutex_lock(&contig_writer_mutex);
-			if (!contains_seq(vjf_window_candidates, (char*) *it) && !contains_seq(vjf_windows, ((char*) *it) + (eval_start-1))) {
+			if (!contains_seq(vjf_window_candidates, window) && !contains_seq(vjf_windows, (window + (eval_start-1)))) {
 				is_to_be_processed = 1;
 				// Don't process same window twice
-				vjf_window_candidates.insert(*it);
+				vjf_window_candidates.insert(window);
 				sprintf(contig_id, "vjf_%d", contig_num++);
 				if ((contig_num % 1000) == 0) {
 					fprintf(stderr, "Processing contig num: %d\n", contig_num);
@@ -832,29 +836,31 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				vector<mapped_pair> mapped_reads;
 				vector<pair<int,int> > start_positions;
 
-				quick_map_process_contig(contig_id, (char*) *it, mapped_reads, start_positions);
+				quick_map_process_contig(contig_id, (char*) window, mapped_reads, start_positions);
 
 				char is_debug = 0;
 
-				char is_valid = coverage_is_valid(read_length, strlen(*it),
+				char is_valid = coverage_is_valid(read_length, strlen(window),
 						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
 
 				if (is_valid) {
 //					fprintf(stderr, "VALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 
 					// Truncate assembled contig at eval stop
-					((char*)(*it))[eval_start+CONTIG_SIZE-1] = '\0';
+					window[eval_start+CONTIG_SIZE-1] = '\0';
 
 					// Add contig to set
 					pthread_mutex_lock(&contig_writer_mutex);
-					vjf_windows.insert(((char*) *it) + (eval_start-1));
+//					vjf_windows.insert(window + (eval_start-1));
+					vjf_windows[window + eval_start-1] = cdr3;
 					pthread_mutex_unlock(&contig_writer_mutex);
 				} else {
 //					fprintf(stderr, "INVALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 				}
 			} else {
 				// TODO: Re-use buffers here...
-				free((char*) *it);
+				free(window);
+				free(cdr3);
 			}
 		}
 	}
@@ -865,8 +871,10 @@ void output_windows() {
 	char* contig_file = "vdj_contigs.fa";
 	FILE* fp = fopen(contig_file, "w");
 	int contig_num = 1;
-	for (dense_hash_set<const char*, contig_hash, contig_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
-		fprintf(fp, ">vjf_%d\n%s\n", contig_num++, *it);
+	for (dense_hash_map<const char*, const char*, contig_hash, contig_eqstr>::iterator it=vjf_windows.begin(); it!=vjf_windows.end(); it++) {
+		char* window = (char*) it->first;
+		char* cdr3 = (char*) it->second;
+		fprintf(fp, ">vjf_%d_%s\n%s\n", contig_num++, cdr3, window);
 	}
 	fclose(fp);
 

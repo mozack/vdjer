@@ -6,12 +6,14 @@
 #include <vector>
 #include <sparsehash/sparse_hash_map>
 #include <sparsehash/sparse_hash_set>
+#include <sparsehash/dense_hash_map>
 #include <sparsehash/dense_hash_set>
 #include "hash_utils.h"
 #include "vj_filter.h"
 
 using namespace std;
 using google::sparse_hash_set;
+using google::dense_hash_map;
 using google::dense_hash_set;
 
 
@@ -202,7 +204,7 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, vjf_hash, vjf_e
 // Thread local CDR3 buffer
 __thread char* vjf_cdr3_block_buffer;
 
-void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
+void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>& windows) {
 
 	char* cdr3_block = vjf_cdr3_block_buffer;
 
@@ -269,9 +271,11 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 						if (windows.find(win) == windows.end()) {
 
 							char* final_win = (char*) calloc(1024, sizeof(char));
+							char* final_cdr3 = (char*) calloc(256, sizeof(char));
 							strcpy(final_win, win);
+							strcpy(final_cdr3, *it);
 
-							windows.insert(final_win);
+							windows[final_win] = final_cdr3;
 						}
 					}
 				}
@@ -312,7 +316,7 @@ void vjf_init(char* v_file, char* j_file, int max_dist, int min_win, int max_win
 
 
 
-void vjf_search(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
+void vjf_search(char* contig, dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>& windows) {
 	print_windows(contig, windows);
 }
 
