@@ -14,11 +14,6 @@ using namespace std;
 using google::sparse_hash_set;
 using google::dense_hash_set;
 
-// Rough defaults with vmer and jmer 10 bases from edges of annotated v and j genes
-//#define MIN_WINDOW 10
-//#define MAX_WINDOW 90
-
-//#define WINDOW_SPAN 90
 
 int MIN_WINDOW;
 int MAX_WINDOW;
@@ -209,10 +204,7 @@ __thread char* vjf_cdr3_block_buffer;
 
 void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr>& windows) {
 
-	// Allocate space for up to 100 CDR3's
-	// TODO: Re-use memory (or shrink and move to stack?)
 	char* cdr3_block = vjf_cdr3_block_buffer;
-//	char* orig_cdr3_block = cdr3_block;
 
 	sparse_hash_set<const char*, vjf_hash, vjf_eqstr> cdr3_seq;
 
@@ -279,19 +271,13 @@ void print_windows(char* contig, dense_hash_set<const char*, vjf_hash, vjf_eqstr
 							char* final_win = (char*) calloc(1024, sizeof(char));
 							strcpy(final_win, win);
 
-//							pthread_mutex_lock(&vjf_mutex);
 							windows.insert(final_win);
-//							fprintf(stderr, final_win);
-//							fprintf(stderr, "\n");
-//							pthread_mutex_unlock(&vjf_mutex);
 						}
 					}
 				}
 			}
 		}
 	}
-
-//	free(orig_cdr3_block);
 }
 
 void init(char* v_file, char* j_file, int max_dist) {

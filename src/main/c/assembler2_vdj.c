@@ -74,13 +74,7 @@ extern void quick_map_process_contig_file(char* contig_file);
 // Kmers containing bases below this threshold are excluded from assembly.
 #define MIN_BASE_QUALITY 20
 
-// Minimum edge frequency as percent
-// #define MIN_EDGE_FREQUENCY .02
-
 #define MIN_EDGE_FREQUENCY -1
-
-// Must be greater than the number of  source(root) nodes - TODO: re-use threads and allocate dynamically.
-#define MAX_THREADS 1000000
 
 #define MAX_NODE_VISITS 5
 
@@ -201,8 +195,6 @@ void print_node(struct node* node) {
 int node_id = 1;
 
 struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int strand, char* quals) {
-
-//	node* my_node = (node*) calloc(1, sizeof(struct node));
 
 	if (pool->idx >= pool->size) {
 		fprintf(stderr, "TOO MANY NODES!!! idx: %d, size: %d\n", pool->idx, pool->size);
@@ -475,14 +467,11 @@ int is_base_quality_good(unsigned char* qual_sums) {
 
 void prune_pre_graph(dense_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 
-//	pre_nodes.set_deleted_key(NULL);
 	for (dense_hash_map<const char*, pre_node, my_hash, eqstr>::const_iterator it = pre_nodes.begin();
 			it != pre_nodes.end(); ++it) {
 
 		const char* key = it->first;
 		pre_node node = it->second;
-
-//		fprintf(stderr, "prenode: %d\t%d\t%d\t%d\n", node.frequency, node.hasMultipleUniqueReads, node.qual_sums[0], node.qual_sums[34]);
 
 		if ((node.frequency < min_node_freq) ||
 			!(node.hasMultipleUniqueReads) ||
@@ -638,8 +627,6 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 						temp = NULL;
 					}
 
-//					next->toNodes = NULL;
-//					next->fromNodes = NULL;
 					next->is_filtered = 1;
 					has_vmer = has_vmer || next->has_vmer;
 					has_jmer = has_jmer || next->has_jmer;
@@ -648,10 +635,6 @@ void condense_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* n
 
 					nodes_condensed += 1;
 				}
-
-//				fprintf(stderr, "Condensed: ");
-//				print_kmer(node->kmer);
-//				fprintf(stderr, "\t%s\n", seq);
 
 				// Advance condensed seq buffer idx
 				condensed_seq_idx += (strlen(seq) + 1);
@@ -690,19 +673,14 @@ struct linked_node* identify_root_nodes(dense_hash_map<const char*, struct node*
 
 	fprintf(stderr, "num root nodes: %d\n", count);
 
-	fprintf(stderr, "NUM_ROOT_CANDIDATES: %d\n", num_root_candidates);
-	fflush(stderr);
-
 	return root_nodes;
 }
 
 struct contig {
-//	char* seq;
 	vector<char*>* fragments;
 	struct node* curr_node;
 	dense_hash_map<const char*, char, my_hash, eqstr>* visited_nodes;
 	double score;
-//	int size;  // really curr_index now
 	int real_size;
 	char is_repeat;
 	char has_vmer;
@@ -712,8 +690,6 @@ struct contig {
 struct contig* new_contig() {
 	struct contig* curr_contig;
 	curr_contig = (contig*) calloc(1, sizeof(contig));
-//	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
-//	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	curr_contig->visited_nodes->set_empty_key(NULL);
@@ -728,26 +704,11 @@ struct contig* new_contig() {
 
 struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragments) {
 
-	// Stash any orig sequence in fragment vector so the pointer can be shared across contigs
-	/*
-	if (strlen(orig->seq) > 0) {
-		orig->fragments->push_back(orig->seq);
-
-		// track fragments for cleanup later
-		all_contig_fragments.push_back(orig->seq);
-
-		orig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
-		orig->size = 0;  // Reset index (not really size)
-	}
-	*/
-
 	struct contig* copy = (contig*) calloc(sizeof(contig), sizeof(char));
-//	copy->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 
 	// Copy original fragments to new contig
 	copy->fragments = new vector<char*>(*(orig->fragments));
 
-//	copy->size = orig->size;
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
 	//copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
@@ -763,7 +724,6 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 void free_contig(struct contig* contig) {
 	delete contig->visited_nodes;
 	delete contig->fragments;
-//	free(contig->seq);
 	free(contig);
 }
 
@@ -817,7 +777,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 	if (contig->real_size >= MIN_CONTIG_SIZE && contig->has_vmer && contig->has_jmer) {
 
-//		fprintf(stderr, "CONTIG_SIZE: %d\n", contig->real_size);
 		// Allow some slack for condensed seq overrun
 		char buf[MAX_CONTIG_SIZE*2+1];
 		total_contigs += 1;
@@ -834,13 +793,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			strncat(buf, *it, to_cat);
 			length += strlen(*it);
 		}
-
-		/*
-		if (strlen(contig->seq) > 0 && length < MAX_CONTIG_SIZE) {
-			strncat(buf, contig->seq, MAX_CONTIG_SIZE - length);
-		}
-		*/
-
 
 		// Search for V / J anchors and add to hash set.
 		dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
@@ -928,33 +880,7 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 	contig->has_vmer = contig->has_vmer || contig->curr_node->has_vmer;
 	contig->has_jmer = contig->has_jmer || contig->curr_node->has_jmer;
 
-	/*
-	int add_len = 1;
-
 	if (contig->curr_node->is_condensed) {
-		add_len = strlen(contig->curr_node->seq);
-		if (entire_kmer && add_len > kmer_size) {
-			add_len = kmer_size;
-		}
-	} else if (entire_kmer) {
-		add_len = kmer_size;
-	}
-	*/
-
-	if (contig->curr_node->is_condensed) {
-		// Add current sequence to fragment vector
-		// Necessary to preserve order
-		/*
-		if (contig->size > 0) {
-			contig->fragments->push_back(contig->seq);
-			// track fragments for cleanup later
-			all_contig_fragments.push_back(contig->seq);
-
-			contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
-			contig->size = 0;  // Reset index (not really size)
-		}
-		*/
-
 		// Add condensed node sequence to fragment vector
 		contig->fragments->push_back(contig->curr_node->seq);
 		contig->real_size += strlen(contig->curr_node->seq);
@@ -969,30 +895,6 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 			contig->real_size += kmer_size;
 			all_contig_fragments.push_back(fragment);
 		}
-
-		/*
-		// If new sequence does not fit into current fragment,
-		// allocate anew
-		if (contig->size+add_len >= MAX_FRAGMENT_SIZE) {
-			contig->fragments->push_back(contig->seq);
-
-			// track fragments for cleanup later
-			all_contig_fragments.push_back(contig->seq);
-
-			contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
-			contig->size = 0;  // Reset index (not really size)
-		}
-
-		// Now add the new sequence (either a single base or entire kmer)
-		if (!entire_kmer) {
-			contig->seq[contig->size++] = contig->curr_node->kmer[0];
-			contig->real_size += 1;
-		} else {
-			strncpy(&(contig->seq[contig->size]), contig->curr_node->kmer, kmer_size);
-			contig->size += kmer_size;
-			contig->real_size += kmer_size;
-		}
-		*/
 	}
 }
 
@@ -1087,7 +989,6 @@ int build_contigs(
 				paths_from_root++;
 			}
 
-//			contig->score = contig->score + log10(contig->curr_node->frequency) - log10(total_edge_count);
 			contig->score = contig->score + log10(contig->curr_node->frequency) - log10_total_edge_count;
 		}
 
@@ -1151,7 +1052,6 @@ struct node* get_next_root(thread_info* thread) {
 
 char all_roots_processed = 0;
 
-//TODO: Use thread pool instead of spawning threads
 void* worker_thread(void* t) {
 
 	thread_info* thread = (thread_info*) t;
@@ -1190,10 +1090,6 @@ void* worker_thread(void* t) {
 //			fprintf(stderr, "\n");
 		}
 	}
-
-//	pthread_mutex_lock(&running_thread_mutex);
-//	running_threads -= 1;
-//	pthread_mutex_unlock(&running_thread_mutex);
 }
 
 void dump_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, const char* filename) {
@@ -1284,9 +1180,6 @@ linked_node* traceback_roots(linked_node* root) {
 		int ctr = 0;  // Don't allow infinite loop
 		while (node->fromNodes != NULL && node->fromNodes->next == NULL & ctr++ < 300) {
 			node = node->fromNodes->node;
-//			fprintf(stderr, "\t");
-//			print_kmer(node->kmer);
-//			fprintf(stderr, "\n");
 		}
 
 		fprintf(stderr, "Traceback dist: %d\n", ctr);
@@ -1349,7 +1242,7 @@ void cleanup(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, s
 	}
 }
 
-#define MAX_ROOTS_PER_THREAD 10
+#define MAX_ROOTS_PER_THREAD 5
 
 thread_info threads[100];
 
