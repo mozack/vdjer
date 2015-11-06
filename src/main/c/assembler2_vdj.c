@@ -45,8 +45,8 @@ extern void quick_map_process_contig(char* contig_id, char* contig, vector<mappe
 // quick_map3.c
 extern void quick_map_process_contig_file(char* contig_file);
 
-#define MIN_CONTIG_SIZE 500
-#define MAX_CONTIG_SIZE 600
+#define MIN_CONTIG_SIZE 550
+#define MAX_CONTIG_SIZE 650
 #define MAX_READ_LENGTH 1001
 //TODO: Set to kmer_size + 1 ???
 #define MAX_FRAGMENT_SIZE 36
@@ -809,9 +809,9 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			char is_to_be_processed = 0;
 			char contig_id[256];
 
-			CONTIG_SIZE = 341;
+			CONTIG_SIZE = 390;
 			int eval_start = 50;
-			int eval_stop  = 390;
+			int eval_stop  = 439;
 			int read_span  = 35;
 			int insert_low = INSERT_LEN;
 			int insert_high = INSERT_LEN;
