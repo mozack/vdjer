@@ -1367,10 +1367,10 @@ char* assemble(const char* input,
 
 		char isUnalignedRegion = !truncate_on_repeat;
 
-		root_nodes = identify_root_nodes(nodes);
-
 		build_graph2(unaligned_input, nodes, pool, 0, pre_nodes);
 		print_status("POST_BUILD_GRAPH2");
+
+		root_nodes = identify_root_nodes(nodes);
 
 		pre_nodes.clear();
 		pre_nodes.resize(0);
@@ -1388,7 +1388,7 @@ char* assemble(const char* input,
 		fprintf(stderr, "Graph too complex for region: %s\n", prefix);
 	}
 
-	root_nodes = traceback_roots(root_nodes);
+//	root_nodes = traceback_roots(root_nodes);
 
 	print_status("POST_ROOT_TRACEBACK");
 
