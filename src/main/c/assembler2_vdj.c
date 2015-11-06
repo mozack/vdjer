@@ -124,6 +124,7 @@ struct node {
 	//TODO: Collapse from 8 to 2 bits.  Only store as key.
 	char* kmer;
 	char* seq;
+	char kmer_seq[2];
 	//TODO: Convert to stl?
 	struct linked_node* toNodes;
 	struct linked_node* fromNodes;
@@ -212,6 +213,7 @@ struct node* new_node(char* seq, char* contributingRead, struct_pool* pool, int 
 	my_node->kmer = seq;
 	my_node->frequency = 1;
 	my_node->id = node_id++;
+	my_node->kmer_seq[0] = my_node->kmer[0];
 
 	return my_node;
 }
@@ -278,7 +280,7 @@ void increment_node_freq(struct node* node) {
 }
 
 void add_to_graph(char* sequence, dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char* qual, int strand, char has_roots,
-		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
+		dense_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 
 	struct node* prev = 0;
 
@@ -326,7 +328,7 @@ void add_to_graph(char* sequence, dense_hash_map<const char*, struct node*, my_h
 	}
 }
 
-void add_to_table(char* sequence, sparse_hash_map<const char*, pre_node, my_hash, eqstr> & pre_table, char* qual, int strand) {
+void add_to_table(char* sequence, dense_hash_map<const char*, pre_node, my_hash, eqstr> & pre_table, char* qual, int strand) {
 
 	for (int i=0; i<=read_length-kmer_size; i++) {
 
@@ -373,7 +375,7 @@ void add_to_table(char* sequence, sparse_hash_map<const char*, pre_node, my_hash
 	}
 }
 
-void build_pre_graph(const char* input, sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
+void build_pre_graph(const char* input, dense_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
 
@@ -417,7 +419,7 @@ void build_pre_graph(const char* input, sparse_hash_map<const char*, pre_node, m
 
 
 void build_graph2(const char* input, dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes, struct_pool* pool, char has_roots,
-		sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
+		dense_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 	size_t input_len = strlen(input);
 	int record_len = read_length*2 + 1;
 
@@ -471,10 +473,10 @@ int is_base_quality_good(unsigned char* qual_sums) {
 	return is_good;
 }
 
-void prune_pre_graph(sparse_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
+void prune_pre_graph(dense_hash_map<const char*, pre_node, my_hash, eqstr>& pre_nodes) {
 
-	pre_nodes.set_deleted_key(NULL);
-	for (sparse_hash_map<const char*, pre_node, my_hash, eqstr>::const_iterator it = pre_nodes.begin();
+//	pre_nodes.set_deleted_key(NULL);
+	for (dense_hash_map<const char*, pre_node, my_hash, eqstr>::const_iterator it = pre_nodes.begin();
 			it != pre_nodes.end(); ++it) {
 
 		const char* key = it->first;
@@ -695,12 +697,12 @@ struct linked_node* identify_root_nodes(dense_hash_map<const char*, struct node*
 }
 
 struct contig {
-	char* seq;
+//	char* seq;
 	vector<char*>* fragments;
 	struct node* curr_node;
 	dense_hash_map<const char*, char, my_hash, eqstr>* visited_nodes;
 	double score;
-	int size;  // really curr_index now
+//	int size;  // really curr_index now
 	int real_size;
 	char is_repeat;
 	char has_vmer;
@@ -710,8 +712,8 @@ struct contig {
 struct contig* new_contig() {
 	struct contig* curr_contig;
 	curr_contig = (contig*) calloc(1, sizeof(contig));
-	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
-	curr_contig->size = 0;
+//	curr_contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
+//	curr_contig->size = 0;
 	curr_contig->is_repeat = 0;
 	curr_contig->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>();
 	curr_contig->visited_nodes->set_empty_key(NULL);
@@ -727,6 +729,7 @@ struct contig* new_contig() {
 struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragments) {
 
 	// Stash any orig sequence in fragment vector so the pointer can be shared across contigs
+	/*
 	if (strlen(orig->seq) > 0) {
 		orig->fragments->push_back(orig->seq);
 
@@ -736,14 +739,15 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 		orig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 		orig->size = 0;  // Reset index (not really size)
 	}
+	*/
 
 	struct contig* copy = (contig*) calloc(sizeof(contig), sizeof(char));
-	copy->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
+//	copy->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 
 	// Copy original fragments to new contig
 	copy->fragments = new vector<char*>(*(orig->fragments));
 
-	copy->size = orig->size;
+//	copy->size = orig->size;
 	copy->real_size = orig->real_size;
 	copy->is_repeat = orig->is_repeat;
 	//copy->visited_nodes = new dense_hash_map<const char*, char, my_hash, eqstr>(*orig->visited_nodes);
@@ -759,7 +763,7 @@ struct contig* copy_contig(struct contig* orig, vector<char*>& all_contig_fragme
 void free_contig(struct contig* contig) {
 	delete contig->visited_nodes;
 	delete contig->fragments;
-	free(contig->seq);
+//	free(contig->seq);
 	free(contig);
 }
 
@@ -791,16 +795,6 @@ void visit_curr_node(struct contig* contig) {
 	}
 
 	(*vnodes)[contig->curr_node->kmer] = num_visits;
-}
-
-int get_contig_len(struct contig* contig) {
-	int length = strlen(contig->seq);
-
-	for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
-		length += strlen(*it);
-	}
-
-	return length;
 }
 
 int output_contigs = 0;
@@ -841,9 +835,11 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			length += strlen(*it);
 		}
 
+		/*
 		if (strlen(contig->seq) > 0 && length < MAX_CONTIG_SIZE) {
 			strncat(buf, contig->seq, MAX_CONTIG_SIZE - length);
 		}
+		*/
 
 
 		// Search for V / J anchors and add to hash set.
@@ -932,6 +928,7 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 	contig->has_vmer = contig->has_vmer || contig->curr_node->has_vmer;
 	contig->has_jmer = contig->has_jmer || contig->curr_node->has_jmer;
 
+	/*
 	int add_len = 1;
 
 	if (contig->curr_node->is_condensed) {
@@ -942,10 +939,12 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 	} else if (entire_kmer) {
 		add_len = kmer_size;
 	}
+	*/
 
 	if (contig->curr_node->is_condensed) {
 		// Add current sequence to fragment vector
 		// Necessary to preserve order
+		/*
 		if (contig->size > 0) {
 			contig->fragments->push_back(contig->seq);
 			// track fragments for cleanup later
@@ -954,11 +953,24 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 			contig->seq = (char*) calloc(MAX_FRAGMENT_SIZE, sizeof(char));
 			contig->size = 0;  // Reset index (not really size)
 		}
+		*/
 
 		// Add condensed node sequence to fragment vector
 		contig->fragments->push_back(contig->curr_node->seq);
 		contig->real_size += strlen(contig->curr_node->seq);
 	} else {
+
+		if (!entire_kmer) {
+			contig->fragments->push_back(contig->curr_node->kmer_seq);
+			contig->real_size += 1;
+		} else {
+			char* fragment = (char*) calloc(kmer_size+1, sizeof(char));
+			strncpy(fragment, contig->curr_node->kmer, kmer_size);
+			contig->real_size += kmer_size;
+			all_contig_fragments.push_back(fragment);
+		}
+
+		/*
 		// If new sequence does not fit into current fragment,
 		// allocate anew
 		if (contig->size+add_len >= MAX_FRAGMENT_SIZE) {
@@ -980,6 +992,7 @@ void append_to_contig(struct contig* contig, vector<char*>& all_contig_fragments
 			contig->size += kmer_size;
 			contig->real_size += kmer_size;
 		}
+		*/
 	}
 }
 
@@ -1435,8 +1448,10 @@ char* assemble(const char* input,
 	// TODO: Factor out to separate function
 	// Code block here is used to allow pre_nodes to go out of scope and free memory.
 	{
-		sparse_hash_map<const char*, pre_node, my_hash, eqstr> pre_nodes;
-		pre_nodes.set_deleted_key(NULL);
+		dense_hash_map<const char*, pre_node, my_hash, eqstr> pre_nodes;
+		pre_nodes.set_empty_key(NULL);
+		char* deleted_key = (char*) calloc(kmer_size, sizeof(char));
+		pre_nodes.set_deleted_key(deleted_key);
 
 		print_status("PRE_PRE_GRAPH1");
 		build_pre_graph(input, pre_nodes);
