@@ -36,7 +36,8 @@ extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_reg
 
 // coverage.c
 extern char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
-		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads, vector<pair<int,int> >& start_positions, char is_debug);
+		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads,
+		               vector<pair<int,int> >& start_positions, char is_debug, int mate_span);
 
 // quick_map3.c
 extern void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>& mapped_reads,
@@ -106,6 +107,8 @@ int INSERT_LEN;
 int FILTER_READ_FLOOR;
 char* ROOT_SIMILARITY_FILE;
 int VREGION_KMER_SIZE;
+int READ_SPAN;
+int MATE_SPAN;
 
 struct struct_pool {
 	struct node* nodes;
@@ -812,7 +815,6 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			CONTIG_SIZE = 390;
 			int eval_start = 50;
 			int eval_stop  = 439;
-			int read_span  = 35;
 			int insert_low = INSERT_LEN;
 			int insert_high = INSERT_LEN;
 			int floor = FILTER_READ_FLOOR;
@@ -841,7 +843,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				char is_debug = 0;
 
 				char is_valid = coverage_is_valid(read_length, strlen(window),
-						eval_start, eval_stop, read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug);
+						eval_start, eval_stop, READ_SPAN, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug, MATE_SPAN);
 
 				if (is_valid) {
 //					fprintf(stderr, "VALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
@@ -1520,6 +1522,8 @@ int main(int argc, char* argv[]) {
 	ROOT_SIMILARITY_FILE = argv[22];
 	VREGION_KMER_SIZE = atoi(argv[23]);
 	MIN_ROOT_HOMOLOGY_SCORE = atoi(argv[24]);
+	READ_SPAN = atoi(argv[25]);
+	MATE_SPAN = atoi(argv[26]);
 
 	fprintf(stderr, "mnf: %d\n", min_node_freq);
 	fprintf(stderr, "mbq: %d\n", min_base_quality);

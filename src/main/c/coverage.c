@@ -7,7 +7,7 @@
 
 using namespace std;
 
-char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
+char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int mate_span,
 		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads,
 		               vector<pair<int,int> >& start_positions, char is_debug) {
 
@@ -25,8 +25,11 @@ char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int
 			begin_idx += 1;
 		}
 
-		mate_low = pos + insert_low - read_length - read_length/2;
-		mate_high = pos + insert_high - read_length + read_length/2;
+//		mate_low = pos + insert_low - read_length - read_length/2;
+//		mate_high = pos + insert_high - read_length + read_length/2;
+
+		mate_low = pos + insert_low - read_length - mate_span/2;
+		mate_high = pos + insert_high - read_length + mate_span/2;
 
 		if (mate_high > eval_stop) {
 			mate_high = eval_stop+1;
@@ -60,7 +63,7 @@ char mate_coverage_is_valid(int read_length, int contig_len, int eval_start, int
 
 char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
 		               int insert_low, int insert_high, int floor, vector<mapped_pair>& mapped_reads,
-		               vector<pair<int,int> >& start_positions, char is_debug) {
+		               vector<pair<int,int> >& start_positions, char is_debug, int mate_span) {
 
 
 	char is_valid = 1;
@@ -118,7 +121,7 @@ char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval
 	}
 
 	if (is_valid) {
-		is_valid = mate_coverage_is_valid(read_length, contig_len, eval_start, eval_stop, read_span,
+		is_valid = mate_coverage_is_valid(read_length, contig_len, eval_start, eval_stop, mate_span,
 			   insert_low, insert_high, floor, mapped_reads,
 			   start_positions, is_debug);
 	}
