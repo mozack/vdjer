@@ -790,11 +790,14 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 		buf[0] = '\0';
 
-		int length = 0;
+//		int length = 0;
 		for (vector<char*>::iterator it = contig->fragments->begin(); it != contig->fragments->end(); ++it) {
-			int to_cat = MAX_CONTIG_SIZE - length;
+			int to_cat = MAX_CONTIG_SIZE - strlen(buf);
+			if (to_cat <= 0) {
+				break;
+			}
 			strncat(buf, *it, to_cat);
-			length += strlen(*it);
+//			length += strlen(*it);
 		}
 
 		// Search for V / J anchors and add to hash set.
