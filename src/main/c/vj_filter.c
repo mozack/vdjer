@@ -27,7 +27,7 @@ int J_EXTENSION;
 #define VJ_SEARCH_END 1000
 
 // Anchors are located this many bases away from germline 3' and 5' ends of the V and J regions respectively
-#define ANCHOR_PADDING 10
+#define ANCHOR_PADDING 16
 
 pthread_mutex_t vjf_mutex;
 
@@ -143,7 +143,7 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		ch[3] = 0;
 
 		if (strncmp(contig+i, "TGT", 3) == 0 || strncmp(contig+i, "TGC", 3) == 0) {
-//			fprintf(stderr, "C @ %d\n", i);
+			fprintf(stderr, "C @ %d\n", i);
 			v_indices.push_back(i);
 		}
 	}
@@ -155,7 +155,7 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		ch[3] = 0;
 
 		if (J_CONSERVED == 'W' && strncmp(contig+i, "TGG", 3) == 0) {
-//			fprintf(stderr, "W @ %d\n", i);
+			fprintf(stderr, "W @ %d\n", i);
 			j_indices.push_back(i);
 		} else if (J_CONSERVED == 'F' && (strncmp(contig+i, "TTC", 3) == 0 || strncmp(contig+i, "TTT", 3) == 0)) {
 //			fprintf(stderr, "J @ %d\n", i);
@@ -171,6 +171,8 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		for (j=j_indices.begin(); j!=j_indices.end(); j++) {
 			// For each C, (W/F) combo, check the distance and frame
 			int window = *j - *v + 3;
+
+			fprintf(stderr, "window: %d\tj:\t*jv:%d*v\n", window, *j, *v);
 
 			// TODO: Parameterize min/max window
 			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW && *j >= *v) {
@@ -218,6 +220,11 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 
 	for (int i=0; i<len; i++) {
 		unsigned long kmer = seq_to_int(contig_index);
+
+		if (kmer == 0) {
+			printf("STRANGE CONTIG: %s\n", contig);
+			fflush(stdout);
+		}
 
 		if (matches_vmer(kmer)) {
 			v_indices.push_back(i);
