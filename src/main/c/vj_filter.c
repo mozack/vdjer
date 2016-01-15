@@ -143,7 +143,7 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		ch[3] = 0;
 
 		if (strncmp(contig+i, "TGT", 3) == 0 || strncmp(contig+i, "TGC", 3) == 0) {
-			fprintf(stderr, "C @ %d\n", i);
+//			fprintf(stderr, "C @ %d\n", i);
 			v_indices.push_back(i);
 		}
 	}
@@ -155,10 +155,10 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 		ch[3] = 0;
 
 		if (J_CONSERVED == 'W' && strncmp(contig+i, "TGG", 3) == 0) {
-			fprintf(stderr, "W @ %d\n", i);
+//			fprintf(stderr, "W @ %d\n", i);
 			j_indices.push_back(i);
 		} else if (J_CONSERVED == 'F' && (strncmp(contig+i, "TTC", 3) == 0 || strncmp(contig+i, "TTT", 3) == 0)) {
-			fprintf(stderr, "J @ %d\n", i);
+//			fprintf(stderr, "J @ %d\n", i);
 			j_indices.push_back(i);
 		}
 	}
@@ -172,15 +172,13 @@ void find_conserved_aminos(int v_index, int j_index, char* contig,
 			// For each C, (W/F) combo, check the distance and frame
 			int window = *j - *v + 3;
 
-			fprintf(stderr, "window: %d\tj:\t%dv:%d\n", window, *j, *v);
+//			fprintf(stderr, "window: %d\tj:\t*jv:%d*v\n", window, *j, *v);
 
 			// TODO: Parameterize min/max window
 			if (window % 3 == 0 && window >= MIN_WINDOW && window <= MAX_WINDOW && *j >= *v) {
 
 				strncpy(cdr3, contig+*v, window);
 				cdr3[window] = '\0';
-
-				fprintf(stderr, "cdr3: %s\n", cdr3);
 
 //				if (PRINT_CDR3_INDEX) {
 //					fprintf(stderr, "contig: [%s]\t cdr3: [%s]\tV: [%d]\tJ: [%d]\n", contig, cdr3, *v, *j);
@@ -258,12 +256,9 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 	sparse_hash_set<const char*, vjf_hash, vjf_eqstr>::const_iterator it;
 	for (it=cdr3_seq.begin(); it!=cdr3_seq.end(); it++) {
 
-		fprintf(stderr, "iterating: %s\n", *it);
-
 		if (!is_sub_string(*it, cdr3_seq)) {
 
 			int window = strlen(*it);
-			fprintf(stderr, "window: %d\n", window);
 
 			// Find current CDR3 string in contig
 			char* start = strstr(contig, *it);
@@ -271,21 +266,15 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 			if (start != NULL) {
 
 				int vpad = WINDOW_SPAN - (window + J_EXTENSION);
-				fprintf(stderr, "vpad: %d\n", vpad);
 
 				start -= vpad;
-
-				fprintf(stderr, "start length: %d\n", strlen(start));
 
 				if (strlen(start) > WINDOW_SPAN) {
 					char win[1024];
 					memset(win, 0, 1024);
 					strncpy(win, start, WINDOW_SPAN);
 
-					fprintf(stderr, "Found win: %s\n", win);
-
 					if (is_in_frame(win)) {
-						fprintf(stderr, "Win in frame\n");
 						if (windows.find(win) == windows.end()) {
 
 							char* final_win = (char*) calloc(1024, sizeof(char));
@@ -293,11 +282,7 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 							strcpy(final_win, win);
 							strcpy(final_cdr3, *it);
 
-							fprintf(stderr, "Adding to windows: %s\t%s\n", final_win, final_cdr3);
-
 							windows[final_win] = final_cdr3;
-
-							fprintf(stderr, "windows size: %d\n", windows.size());
 						}
 					}
 				}
