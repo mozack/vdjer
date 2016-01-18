@@ -189,7 +189,8 @@ void quick_map_process_contig(char* contig_id, char* contig, vector<mapped_pair>
 		vector<pair<int, int> >& start_positions, char should_output) {
 
 	int read1_count = 0;
-	int MAX_READ_PAIRS = 1000000;
+	// TODO: Grow dynamically
+	int MAX_READ_PAIRS = 10000000;
 	map_info** read1 = (map_info**) calloc(MAX_READ_PAIRS, sizeof(map_info*));
 
 	sparse_hash_map<const char*, struct map_info*, vjf_hash, vjf_eqstr> read2;
