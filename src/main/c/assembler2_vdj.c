@@ -295,14 +295,20 @@ void add_to_graph(char* sequence, dense_hash_map<const char*, struct node*, my_h
 					exit(-1);
 				}
 
-				// Check to see if this node contains a vmer
-				unsigned long n_kmer = seq_to_int(kmer);
+				if (kmer_size > SEQ_LEN) {
+					// Check to see if this node contains a vmer
+					unsigned long n_kmer = seq_to_int(kmer);
 
-				if (matches_vmer(n_kmer)) {
+					if (matches_vmer(n_kmer)) {
+						curr->has_vmer = 1;
+					}
+
+					if (matches_jmer(n_kmer)) {
+						curr->has_jmer = 1;
+					}
+				} else {
+					// Just set these to true to pass downstream checks
 					curr->has_vmer = 1;
-				}
-
-				if (matches_jmer(n_kmer)) {
 					curr->has_jmer = 1;
 				}
 
