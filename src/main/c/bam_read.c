@@ -191,7 +191,7 @@ void load_kmers(char* vdj_fasta) {
 	char rc_buf[1024];
 
 	while (fgets (buf, sizeof(buf), vdj)) {
-		if (buf[0] != '>') {
+		if (buf[0] != '>' && strlen(buf) >= EXTRACT_KMER_SIZE) {
 			buf[strlen(buf)-1] = '\0'; // Remove newline
 			rc(buf, rc_buf);
 
