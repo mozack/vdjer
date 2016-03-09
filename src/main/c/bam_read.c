@@ -321,7 +321,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 	int r;
 	char seq[256];
 	while ((r = sam_read1(bam.in, bam.header, b)) >= 0) {
-		if (b->core.flag & 4) {
+//		if (b->core.flag & 4) {
 			char* qname = bam_get_qname(b);
 			bam_get_seq_str(b, seq);
 
@@ -337,13 +337,13 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 						advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 					}
 				}
-				else if (!contains_str(secondary_reads, qname)) {
+				else if ((b->core.flag & 4) && !contains_str(secondary_reads, qname)) {
 					strncpy(read_name_buf_ptr, qname, strlen(qname));
 					secondary_reads.insert(read_name_buf_ptr);
 					advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
 				}
 			}
-		}
+//		}
 	}
 
 	bam_destroy1(b);
