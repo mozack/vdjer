@@ -253,6 +253,10 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 		}
 	}
 
+	dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr> windows_temp;
+	sparse_hash_set<const char*, vjf_hash, vjf_eqstr> cdr3_temp;
+	windows_temp.set_empty_key(NULL);
+
 	sparse_hash_set<const char*, vjf_hash, vjf_eqstr>::const_iterator it;
 	for (it=cdr3_seq.begin(); it!=cdr3_seq.end(); it++) {
 
@@ -275,18 +279,31 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 					strncpy(win, start, WINDOW_SPAN);
 
 					if (is_in_frame(win)) {
-						if (windows.find(win) == windows.end()) {
+						if (windows_temp.find(win) == windows_temp.end()) {
 
 							char* final_win = (char*) calloc(1024, sizeof(char));
 							char* final_cdr3 = (char*) calloc(256, sizeof(char));
 							strcpy(final_win, win);
 							strcpy(final_cdr3, *it);
 
-							windows[final_win] = final_cdr3;
+							windows_temp[final_win] = final_cdr3;
+							cdr3_temp.insert(final_cdr3);
 						}
 					}
 				}
 			}
+		}
+	}
+
+	// Loop back through windows_temp copying results to windows iff cdr3 is not a subset of another cdr3.
+	for (dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>::const_iterator it = windows_temp.begin();
+			it != windows_temp.end(); ++it) {
+
+		const char* contig = it->first;
+		const char* cdr3 = it->second;
+
+		if (!is_sub_string(cdr3, cdr3_temp)) {
+			windows[contig] = cdr3;
 		}
 	}
 }
