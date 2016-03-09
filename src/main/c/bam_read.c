@@ -335,6 +335,7 @@ void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 						strncpy(read_name_buf_ptr, qname, strlen(qname));
 						primary_reads.insert(read_name_buf_ptr);
 						advance_read_buf_ptr(read_name_buf, read_name_buf_ptr, strlen(qname));
+						continue;
 					}
 				}
 				else if ((b->core.flag & 4) && !contains_str(secondary_reads, qname)) {
