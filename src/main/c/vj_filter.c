@@ -206,7 +206,7 @@ char is_sub_string(const char* str, sparse_hash_set<const char*, vjf_hash, vjf_e
 // Thread local CDR3 buffer
 __thread char* vjf_cdr3_block_buffer;
 
-void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>& windows) {
+void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>& windows, char allow_cdr3_substrings) {
 
 	char* cdr3_block = vjf_cdr3_block_buffer;
 
@@ -256,33 +256,34 @@ void print_windows(char* contig, dense_hash_map<const char*, const char*, vjf_ha
 	sparse_hash_set<const char*, vjf_hash, vjf_eqstr>::const_iterator it;
 	for (it=cdr3_seq.begin(); it!=cdr3_seq.end(); it++) {
 
-//		if (!is_sub_string(*it, cdr3_seq)) {
+		if (allow_cdr3_substrings || !is_sub_string(*it, cdr3_seq)) {
 
-		int window = strlen(*it);
+			int window = strlen(*it);
 
-		// Find current CDR3 string in contig
-		char* start = strstr(contig, *it);
+			// Find current CDR3 string in contig
+			char* start = strstr(contig, *it);
 
-		if (start != NULL) {
+			if (start != NULL) {
 
-			int vpad = WINDOW_SPAN - (window + J_EXTENSION);
+				int vpad = WINDOW_SPAN - (window + J_EXTENSION);
 
-			start -= vpad;
+				start -= vpad;
 
-			if (strlen(start) > WINDOW_SPAN) {
-				char win[1024];
-				memset(win, 0, 1024);
-				strncpy(win, start, WINDOW_SPAN);
+				if (strlen(start) > WINDOW_SPAN) {
+					char win[1024];
+					memset(win, 0, 1024);
+					strncpy(win, start, WINDOW_SPAN);
 
-				if (is_in_frame(win)) {
-					if (windows.find(win) == windows.end()) {
+					if (is_in_frame(win)) {
+						if (windows.find(win) == windows.end()) {
 
-						char* final_win = (char*) calloc(1024, sizeof(char));
-						char* final_cdr3 = (char*) calloc(256, sizeof(char));
-						strcpy(final_win, win);
-						strcpy(final_cdr3, *it);
+							char* final_win = (char*) calloc(1024, sizeof(char));
+							char* final_cdr3 = (char*) calloc(256, sizeof(char));
+							strcpy(final_win, win);
+							strcpy(final_cdr3, *it);
 
-						windows[final_win] = final_cdr3;
+							windows[final_win] = final_cdr3;
+						}
 					}
 				}
 			}
@@ -322,8 +323,8 @@ void vjf_init(char* v_file, char* j_file, int max_dist, int min_win, int max_win
 
 
 
-void vjf_search(char* contig, dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>& windows) {
-	print_windows(contig, windows);
+void vjf_search(char* contig, dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr>& windows, char allow_cdr3_substrings) {
+	print_windows(contig, windows, allow_cdr3_substrings);
 }
 
 /*

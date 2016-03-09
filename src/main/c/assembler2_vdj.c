@@ -109,6 +109,7 @@ char* ROOT_SIMILARITY_FILE;
 int VREGION_KMER_SIZE;
 int READ_SPAN;
 int MATE_SPAN;
+char ALLOW_CDR3_SUBSTRINGS;
 
 struct struct_pool {
 	struct node* nodes;
@@ -809,7 +810,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 		// Search for V / J anchors and add to hash set.
 		dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
 		vjf_windows_temp.set_empty_key(NULL);
-		vjf_search(buf, vjf_windows_temp);
+		vjf_search(buf, vjf_windows_temp, ALLOW_CDR3_SUBSTRINGS);
 
 //		fprintf(stderr, "CONTIG_CANDIDATE: %s\t%d\n", buf, vjf_windows_temp.size());
 
@@ -1533,6 +1534,7 @@ int main(int argc, char* argv[]) {
 	MIN_ROOT_HOMOLOGY_SCORE = atoi(argv[24]);
 	READ_SPAN = atoi(argv[25]);
 	MATE_SPAN = atoi(argv[26]);
+	ALLOW_CDR3_SUBSTRINGS = atoi(argv[27]);
 
 	fprintf(stderr, "mnf: %d\n", min_node_freq);
 	fprintf(stderr, "mbq: %d\n", min_base_quality);
