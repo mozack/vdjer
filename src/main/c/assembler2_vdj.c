@@ -110,6 +110,8 @@ int VREGION_KMER_SIZE;
 int READ_SPAN;
 int MATE_SPAN;
 char ALLOW_CDR3_SUBSTRINGS;
+int EVAL_START;
+int EVAL_STOP;
 
 struct struct_pool {
 	struct node* nodes;
@@ -822,16 +824,17 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 			char is_to_be_processed = 0;
 			char contig_id[256];
 
-			CONTIG_SIZE = 390;
-			int eval_start = 50;
-			int eval_stop  = 439;
+//			CONTIG_SIZE = 390;
+//			int eval_start = 50;
+//			int eval_stop  = 439;
+
 			int insert_low = INSERT_LEN;
 			int insert_high = INSERT_LEN;
 			int floor = FILTER_READ_FLOOR;
 
 			// TODO: Use RW lock here?
 			pthread_mutex_lock(&contig_writer_mutex);
-			if (!contains_seq(vjf_window_candidates, window) && !contains_seq(vjf_windows, (window + (eval_start-1)))) {
+			if (!contains_seq(vjf_window_candidates, window) && !contains_seq(vjf_windows, (window + (EVAL_START-1)))) {
 				is_to_be_processed = 1;
 				// Don't process same window twice
 				vjf_window_candidates.insert(window);
@@ -853,18 +856,18 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 				char is_debug = 0;
 
 				char is_valid = coverage_is_valid(read_length, strlen(window),
-						eval_start, eval_stop, READ_SPAN, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug, MATE_SPAN);
+						EVAL_START, EVAL_STOP, READ_SPAN, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug, MATE_SPAN);
 
 				if (is_valid) {
 //					fprintf(stderr, "VALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 
 					// Truncate assembled contig at eval stop
-					window[eval_start+CONTIG_SIZE-1] = '\0';
+					window[EVAL_START+CONTIG_SIZE-1] = '\0';
 
 					// Add contig to set
 					pthread_mutex_lock(&contig_writer_mutex);
-//					vjf_windows.insert(window + (eval_start-1));
-					vjf_windows[window + eval_start-1] = cdr3;
+//					vjf_windows.insert(window + (EVAL_START-1));
+					vjf_windows[window + EVAL_START-1] = cdr3;
 					pthread_mutex_unlock(&contig_writer_mutex);
 				} else {
 //					fprintf(stderr, "INVALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
@@ -1535,6 +1538,9 @@ int main(int argc, char* argv[]) {
 	READ_SPAN = atoi(argv[25]);
 	MATE_SPAN = atoi(argv[26]);
 	ALLOW_CDR3_SUBSTRINGS = atoi(argv[27]);
+	EVAL_START = atoi(argv[28]);
+	EVAL_STOP = atoi(argv[29]);
+	CONTIG_SIZE = EVAL_STOP-EVAL_START+1;
 
 	fprintf(stderr, "mnf: %d\n", min_node_freq);
 	fprintf(stderr, "mbq: %d\n", min_base_quality);
