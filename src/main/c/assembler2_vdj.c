@@ -855,7 +855,8 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 				char is_debug = 0;
 
-				char is_valid = coverage_is_valid(read_length, strlen(window),
+				// If floor is greater than 0, check coverage.
+				char is_valid = floor == 0 ? 1 : coverage_is_valid(read_length, strlen(window),
 						EVAL_START, EVAL_STOP, READ_SPAN, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug, MATE_SPAN);
 
 				if (is_valid) {
