@@ -1552,6 +1552,7 @@ int main(int argc, char* argv[]) {
 //	fprintf(stderr, "kmer: %d\n", kmer);
 
 	CONTIG_SIZE = p.eval_stop - p.eval_start+1;
+	read_length = p.read_len;
 
 	// Initialize seq scoring for root node evalulation
 	score_seq_init(p.kmer, 1000, p.source_sim_file);
