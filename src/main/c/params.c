@@ -43,7 +43,7 @@ void set_reference_info(params* p, char* ref_dir) {
 	strcpy(p->v_anchors, ref_dir);
 	strcat(p->v_anchors, "/v_index");
 	strcpy(p->j_anchors, ref_dir);
-	strcat(p->v_anchors, "/j_index");
+	strcat(p->j_anchors, "/j_index");
 	strcpy(p->vdj_fasta, ref_dir);
 	strcat(p->vdj_fasta, "/ig_vdj.fa");
 	strcpy(p->source_sim_file, ref_dir);
