@@ -23,6 +23,7 @@
 #include "vj_filter.h"
 #include "quick_map3.h"
 #include "seq_dist.h"
+#include "params.h"
 
 using namespace std;
 using google::sparse_hash_map;
@@ -81,9 +82,9 @@ extern void quick_map_process_contig_file(char* contig_file);
 
 #define VREGION_BUF_MAX 10000000
 
-int MIN_ROOT_HOMOLOGY_SCORE;
-
-int MAX_RUNNING_THREADS;
+//int MIN_ROOT_HOMOLOGY_SCORE;
+//
+//int MAX_RUNNING_THREADS;
 
 pthread_mutex_t running_thread_mutex;
 pthread_mutex_t contig_writer_mutex;
@@ -95,23 +96,25 @@ dense_hash_map<const char*, const char*, contig_hash, contig_eqstr> vjf_windows;
 
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
 
+params p;
+
 int read_length;
 int kmer_size;
-int min_node_freq;
-int min_base_quality;
+//int min_node_freq;
+//int min_base_quality;
 
-float MIN_CONTIG_SCORE;
+//float MIN_CONTIG_SCORE;
 
 int CONTIG_SIZE;
-int INSERT_LEN;
-int FILTER_READ_FLOOR;
-char* ROOT_SIMILARITY_FILE;
+//int INSERT_LEN;
+//int FILTER_READ_FLOOR;
+//char* ROOT_SIMILARITY_FILE;
 int VREGION_KMER_SIZE;
-int READ_SPAN;
-int MATE_SPAN;
-char ALLOW_CDR3_SUBSTRINGS;
-int EVAL_START;
-int EVAL_STOP;
+//int READ_SPAN;
+//int MATE_SPAN;
+//char ALLOW_CDR3_SUBSTRINGS;
+//int EVAL_START;
+//int EVAL_STOP;
 
 struct struct_pool {
 	struct node* nodes;
@@ -468,7 +471,7 @@ int is_base_quality_good(unsigned char* qual_sums) {
 	int is_good = 1;
 
 	for (int i=0; i<kmer_size; i++) {
-		if (qual_sums[i] < min_base_quality) {
+		if (qual_sums[i] < p.min_base_quality) {
 			is_good = 0;
 			break;
 		}
@@ -485,7 +488,7 @@ void prune_pre_graph(dense_hash_map<const char*, pre_node, my_hash, eqstr>& pre_
 		const char* key = it->first;
 		pre_node node = it->second;
 
-		if ((node.frequency < min_node_freq) ||
+		if ((node.frequency < p.min_node_freq) ||
 			!(node.hasMultipleUniqueReads) ||
 			!is_base_quality_good(node.qual_sums)) {
 
@@ -502,8 +505,8 @@ char has_vregion_homology(char* kmer, dense_hash_set<const char*, vregion_hash, 
 
 	char is_homologous = 0;
 
-	if (VREGION_KMER_SIZE > 1) {
-		int stop =  kmer_size - VREGION_KMER_SIZE;
+	if (p.vregion_kmer_size > 1) {
+		int stop =  kmer_size - p.vregion_kmer_size;
 
 		// Identify hits in hash index
 		for (int i=0; i<stop; i++) {
@@ -520,7 +523,7 @@ char has_vregion_homology(char* kmer, dense_hash_set<const char*, vregion_hash, 
 }
 
 void add_to_index(char* contig, dense_hash_set<const char*, vregion_hash, vregion_eqstr>& contig_index) {
-	int stop = strlen(contig)-VREGION_KMER_SIZE;
+	int stop = strlen(contig)-p.vregion_kmer_size;
 	for (int i=0; i<stop; i++) {
 		if (contig_index.find(contig+i) == contig_index.end()) {
 			contig_index.insert(contig+i);
@@ -531,7 +534,7 @@ void add_to_index(char* contig, dense_hash_set<const char*, vregion_hash, vregio
 void load_root_similarity_index(dense_hash_set<const char*, vregion_hash, vregion_eqstr>& contig_index) {
 	char* contig = (char*) calloc(VREGION_BUF_MAX, sizeof(char));
 
-	FILE* fp = fopen(ROOT_SIMILARITY_FILE, "r");
+	FILE* fp = fopen(p.source_sim_file, "r");
 
 	int seq_found = 0;
 
@@ -812,7 +815,7 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 		// Search for V / J anchors and add to hash set.
 		dense_hash_map<const char*, const char*, vjf_hash, vjf_eqstr> vjf_windows_temp;
 		vjf_windows_temp.set_empty_key(NULL);
-		vjf_search(buf, vjf_windows_temp, ALLOW_CDR3_SUBSTRINGS);
+		vjf_search(buf, vjf_windows_temp, 1);
 
 //		fprintf(stderr, "CONTIG_CANDIDATE: %s\t%d\n", buf, vjf_windows_temp.size());
 
@@ -828,13 +831,13 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 //			int eval_start = 50;
 //			int eval_stop  = 439;
 
-			int insert_low = INSERT_LEN;
-			int insert_high = INSERT_LEN;
-			int floor = FILTER_READ_FLOOR;
+			int insert_low = p.insert_len;
+			int insert_high = p.insert_len;
+			int floor = p.read_filter_floor;
 
 			// TODO: Use RW lock here?
 			pthread_mutex_lock(&contig_writer_mutex);
-			if (!contains_seq(vjf_window_candidates, window) && !contains_seq(vjf_windows, (window + (EVAL_START-1)))) {
+			if (!contains_seq(vjf_window_candidates, window) && !contains_seq(vjf_windows, (window + (p.eval_start-1)))) {
 				is_to_be_processed = 1;
 				// Don't process same window twice
 				vjf_window_candidates.insert(window);
@@ -857,18 +860,18 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 				// If floor is greater than 0, check coverage.
 				char is_valid = floor == 0 ? 1 : coverage_is_valid(read_length, strlen(window),
-						EVAL_START, EVAL_STOP, READ_SPAN, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug, MATE_SPAN);
+						p.eval_start, p.eval_stop, p.filter_read_span, insert_low, insert_high, floor, mapped_reads, start_positions, is_debug, p.filter_mate_span);
 
 				if (is_valid) {
 //					fprintf(stderr, "VALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
 
 					// Truncate assembled contig at eval stop
-					window[EVAL_START+CONTIG_SIZE-1] = '\0';
+					window[p.eval_start+CONTIG_SIZE-1] = '\0';
 
 					// Add contig to set
 					pthread_mutex_lock(&contig_writer_mutex);
 //					vjf_windows.insert(window + (EVAL_START-1));
-					vjf_windows[window + EVAL_START-1] = cdr3;
+					vjf_windows[window + p.eval_start-1] = cdr3;
 					pthread_mutex_unlock(&contig_writer_mutex);
 				} else {
 //					fprintf(stderr, "INVALID_CONTIG: %s\t%d\n", *it, mapped_reads.size());
@@ -967,7 +970,7 @@ int build_contigs(
 				status = STOPPED_ON_REPEAT;
 			}
 		}
-		else if (contig->curr_node->toNodes == NULL || contig->score < MIN_CONTIG_SCORE || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size-1)) {
+		else if (contig->curr_node->toNodes == NULL || contig->score < p.min_contig_score || contig->real_size >= (MAX_CONTIG_SIZE-kmer_size-1)) {
 			// We've reached the end of the contig.
 			// Append entire current node.
 			append_to_contig(contig, all_contig_fragments, 1);
@@ -1086,7 +1089,7 @@ void* worker_thread(void* t) {
 
 		struct node* source = get_next_root(thread);
 
-		if (source != NULL && score_seq(source->kmer, MIN_ROOT_HOMOLOGY_SCORE)) {
+		if (source != NULL && score_seq(source->kmer, p.min_source_homology_score)) {
 
 			int contig_count = 0;
 			const char* prefix = "foo";
@@ -1273,7 +1276,7 @@ thread_info threads[100];
 void process_roots(linked_node* root_nodes) {
 
 	// Initialize threads and root mutex
-	for (int i=0; i<MAX_RUNNING_THREADS; i++) {
+	for (int i=0; i<p.threads; i++) {
 		pthread_mutex_init(&threads[i].mutex, NULL);
 		int ret = pthread_create(&threads[i].thread, NULL, worker_thread, &threads[i]);
 
@@ -1292,7 +1295,7 @@ void process_roots(linked_node* root_nodes) {
 
 		char is_root_added = 0;
 		int i = 0;
-		while (!is_root_added && i < MAX_RUNNING_THREADS) {
+		while (!is_root_added && i < p.threads) {
 			pthread_mutex_lock(&threads[i].mutex);
 			if (threads[i].roots.size() < MAX_ROOTS_PER_THREAD) {
 				threads[i].roots.push(root_nodes->node);
@@ -1328,7 +1331,7 @@ void process_roots(linked_node* root_nodes) {
 	// wait for them to finish.
 	all_roots_processed = 1;
 
-	for (int i=0; i<MAX_RUNNING_THREADS; i++) {
+	for (int i=0; i<p.threads; i++) {
 		pthread_join(threads[i].thread, NULL);
 	}
 }
@@ -1496,73 +1499,75 @@ int main(int argc, char* argv[]) {
 
 	print_status("START");
 
-	char* input_file = argv[1];
-	char* unaligned_input_file = NULL;
+//	char* input_file = argv[1];
+//	char* unaligned_input_file = NULL;
 
-    min_node_freq = 5;
-    min_base_quality = 150;
-
-	min_node_freq = atoi(argv[2]);
-	min_base_quality = atoi(argv[3]);
-	if (min_base_quality >= MAX_QUAL_SUM) {
-		min_base_quality = MAX_QUAL_SUM-1;
+	parse_params(argc, argv, &p);
+//
+//	min_node_freq = atoi(argv[2]);
+//	min_base_quality = atoi(argv[3]);
+	if (p.min_base_quality >= MAX_QUAL_SUM) {
+		p.min_base_quality = MAX_QUAL_SUM-1;
 	}
 
-	int read_len = atoi(argv[4]);
-	read_length = read_len;
+	VREGION_KMER_SIZE = p.vregion_kmer_size;
 
-	MIN_CONTIG_SCORE = atof(argv[5]);
+//	int read_len = atoi(argv[4]);
+//	read_length = read_len;
+//
+//	MIN_CONTIG_SCORE = atof(argv[5]);
+//
+//	MAX_RUNNING_THREADS = atoi(argv[6]);
+//
+//	if (argc >= 8) {
+//		unaligned_input_file = argv[7];
+//	}
+//
+//	char* vjf_v_file = argv[8];
+//	char* vjf_j_file = argv[9];
+//	int vjf_max_dist = atoi(argv[10]);
+//	int vjf_min_win = atoi(argv[11]);
+//	int vjf_max_win = atoi(argv[12]);
+//	char vjf_j_conserved = argv[13][0];
+//	int vjf_window_span = atoi(argv[14]);
+//	int vjf_j_extension = atoi(argv[15]);
+//	char* vdj_fasta = argv[16];
+//	char* v_region = argv[17];
+//	char* c_region = argv[18];
+//	INSERT_LEN = atoi(argv[19]);
+//	FILTER_READ_FLOOR = atoi(argv[20]);
+//	int kmer = atoi(argv[21]);
+//	ROOT_SIMILARITY_FILE = argv[22];
+//	VREGION_KMER_SIZE = atoi(argv[23]);
+//	MIN_ROOT_HOMOLOGY_SCORE = atoi(argv[24]);
+//	READ_SPAN = atoi(argv[25]);
+//	MATE_SPAN = atoi(argv[26]);
+//	ALLOW_CDR3_SUBSTRINGS = atoi(argv[27]);
+//	EVAL_START = atoi(argv[28]);
+//	EVAL_STOP = atoi(argv[29]);
+//	CONTIG_SIZE = EVAL_STOP-EVAL_START+1;
+//
+//	fprintf(stderr, "mnf: %d\n", min_node_freq);
+//	fprintf(stderr, "mbq: %d\n", min_base_quality);
+//	fprintf(stderr, "kmer: %d\n", kmer);
 
-	MAX_RUNNING_THREADS = atoi(argv[6]);
-
-	if (argc >= 8) {
-		unaligned_input_file = argv[7];
-	}
-
-	char* vjf_v_file = argv[8];
-	char* vjf_j_file = argv[9];
-	int vjf_max_dist = atoi(argv[10]);
-	int vjf_min_win = atoi(argv[11]);
-	int vjf_max_win = atoi(argv[12]);
-	char vjf_j_conserved = argv[13][0];
-	int vjf_window_span = atoi(argv[14]);
-	int vjf_j_extension = atoi(argv[15]);
-	char* vdj_fasta = argv[16];
-	char* v_region = argv[17];
-	char* c_region = argv[18];
-	INSERT_LEN = atoi(argv[19]);
-	FILTER_READ_FLOOR = atoi(argv[20]);
-	int kmer = atoi(argv[21]);
-	ROOT_SIMILARITY_FILE = argv[22];
-	VREGION_KMER_SIZE = atoi(argv[23]);
-	MIN_ROOT_HOMOLOGY_SCORE = atoi(argv[24]);
-	READ_SPAN = atoi(argv[25]);
-	MATE_SPAN = atoi(argv[26]);
-	ALLOW_CDR3_SUBSTRINGS = atoi(argv[27]);
-	EVAL_START = atoi(argv[28]);
-	EVAL_STOP = atoi(argv[29]);
-	CONTIG_SIZE = EVAL_STOP-EVAL_START+1;
-
-	fprintf(stderr, "mnf: %d\n", min_node_freq);
-	fprintf(stderr, "mbq: %d\n", min_base_quality);
-	fprintf(stderr, "kmer: %d\n", kmer);
+	CONTIG_SIZE = p.eval_stop - p.eval_start+1;
 
 	// Initialize seq scoring for root node evalulation
-	score_seq_init(kmer, 1000, ROOT_SIMILARITY_FILE);
+	score_seq_init(p.kmer, 1000, p.source_sim_file);
 
 	vjf_windows.set_empty_key(NULL);
 	vjf_window_candidates.set_empty_key(NULL);
-	vjf_init(vjf_v_file, vjf_j_file, vjf_max_dist, vjf_min_win, vjf_max_win,
-			vjf_j_conserved, vjf_window_span, vjf_j_extension);
+	vjf_init(p.v_anchors, p.j_anchors, p.anchor_mismatches, p.vj_min_win, p.vj_max_win,
+			p.j_conserved, p.window_span, p.j_extension);
 
 	print_status("POST_VJF_INIT");
 
-	char* bam_file = input_file;
 	char* input = NULL;
 	char* unaligned_input = NULL;
 	fprintf(stderr, "Extracting reads...\n");
 	fflush(stdout);
-	extract(bam_file, vdj_fasta, v_region, c_region, input, unaligned_input);
+	extract(p.input_bam, p.vdj_fasta, p.v_region, p.c_region, input, unaligned_input);
 	fprintf(stderr, "Read extract done...\n");
 	fflush(stdout);
 
@@ -1576,8 +1581,8 @@ int main(int argc, char* argv[]) {
                 false,
                 50000000,
                 500000000,
-                read_len,
-                kmer);
+                p.read_len,
+                p.kmer);
 }
 
 
