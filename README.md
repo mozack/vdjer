@@ -20,6 +20,7 @@ To compile, just cd into the vdjer directory and type ```make```.  An executable
 ```vdjer``` will be created.
 
 Pre-built human indices and references can be downloaded from here: TODO
+
 The archive must be untarred and decompressed for use by V'DJer
 
 ## Sample usage:
@@ -30,3 +31,11 @@ generated in the current working directory:
 ```vdjer --in star.sort.bam --rl 50 --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh```
 
 The above runs on the IgH chain with read length of 50, 8 threads and median insert length of 175.
+
+## Parameters
+```
+--in <input BAM>
+--rl <read length>
+--t <threads>
+--ins <median insert size.
+```
