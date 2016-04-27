@@ -1,4 +1,4 @@
-# V'DJer - B Cell Receptor Repertoire Reconstruction from short read mRNA-Seq data
+# V'DJer - B Cell Receptor repertoire reconstruction from short read mRNA-Seq data
 
 V'DJer uses customized read extraction, assembly and V(D)J rearrangement detection 
 and filtering to produce contigs representing the most abundant portions of the BCR
@@ -12,4 +12,21 @@ use STAR for alignment.  At the end of a run assembled contigs will appear in
 
 The V'DJer output is suitable for use by downstream quantification tools such as RSEM.
 
+## Getting the code and building the software
 
+Use a recent release: https://github.com/mozack/vdjer/releases
+
+To compile, just cd into the vdjer directory and type ```make```.  An executable named
+```vdjer``` will be created.
+
+Pre-built human indices and references can be downloaded from here: TODO
+The archive must be untarred and decompressed for use by V'DJer
+
+## Sample usage:
+
+The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa and vdjician.sam
+generated in the current working directory:
+
+```vdjer --in star.sort.bam --rl 50 --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh```
+
+The above runs on the IgH chain with read length of 50, 8 threads and median insert length of 175.
