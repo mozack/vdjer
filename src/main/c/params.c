@@ -104,7 +104,7 @@ void print_params(params* p) {
 	fprintf(stderr, "%s\t%d\n", "min node freq", p->min_node_freq);
 	fprintf(stderr, "%s\t%d\n", "min base qual", p->min_base_quality);
 	fprintf(stderr, "%s\t%d\n", "max read length", p->read_len);
-	fprintf(stderr, "%s\t%d\n", "min contig score (log scaled)", p->min_contig_score);
+	fprintf(stderr, "%s\t%f\n", "min contig score (log scaled)", p->min_contig_score);
 	fprintf(stderr, "%s\t%d\n", "num threads", p->threads);
 	fprintf(stderr, "%s\t%s\n", "v anchor file", p->v_anchors);
 	fprintf(stderr, "%s\t%s\n", "j anchor file", p->j_anchors);
