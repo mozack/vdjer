@@ -6,7 +6,7 @@ struct params {
 	int min_node_freq;
 	int min_base_quality;
 	int read_len;
-	int min_contig_score;
+	float min_contig_score;
 	int threads;
 	char* v_anchors;
 	char* j_anchors;
