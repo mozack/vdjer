@@ -237,7 +237,7 @@ char parse_params(int argc, char** argv, params* p) {
 			p->min_base_quality = atoi(value);
 		} else if (!strcmp(param, "--rl")) {
 			p->read_len = atoi(value);
-		} else if (!strcmp(param, "--ms")) {
+		} else if (!strcmp(param, "--mcs")) {
 			p->min_contig_score = atof(value);
 		} else if (!strcmp(param, "--t")) {
 			p->threads = atoi(value);
