@@ -65,8 +65,6 @@ extern void quick_map_process_contig_file(char* contig_file);
 #define MAX_FREQUENCY 32766
 #define MAX_QUAL_SUM 255
 
-//#define MIN_HOMOLOGY_SCORE 13
-
 // TODO: This is used to bound qual sum arrays.  Use a memory pool instead for this.
 #define MAX_KMER_LEN 50
 
@@ -82,10 +80,6 @@ extern void quick_map_process_contig_file(char* contig_file);
 
 #define VREGION_BUF_MAX 10000000
 
-//int MIN_ROOT_HOMOLOGY_SCORE;
-//
-//int MAX_RUNNING_THREADS;
-
 pthread_mutex_t running_thread_mutex;
 pthread_mutex_t contig_writer_mutex;
 
@@ -100,21 +94,9 @@ params p;
 
 int read_length;
 int kmer_size;
-//int min_node_freq;
-//int min_base_quality;
-
-//float MIN_CONTIG_SCORE;
 
 int CONTIG_SIZE;
-//int INSERT_LEN;
-//int FILTER_READ_FLOOR;
-//char* ROOT_SIMILARITY_FILE;
 int VREGION_KMER_SIZE;
-//int READ_SPAN;
-//int MATE_SPAN;
-//char ALLOW_CDR3_SUBSTRINGS;
-//int EVAL_START;
-//int EVAL_STOP;
 
 struct struct_pool {
 	struct node* nodes;
@@ -1499,57 +1481,12 @@ int main(int argc, char* argv[]) {
 
 	print_status("START");
 
-//	char* input_file = argv[1];
-//	char* unaligned_input_file = NULL;
-
 	parse_params(argc, argv, &p);
-//
-//	min_node_freq = atoi(argv[2]);
-//	min_base_quality = atoi(argv[3]);
 	if (p.min_base_quality >= MAX_QUAL_SUM) {
 		p.min_base_quality = MAX_QUAL_SUM-1;
 	}
 
 	VREGION_KMER_SIZE = p.vregion_kmer_size;
-
-//	int read_len = atoi(argv[4]);
-//	read_length = read_len;
-//
-//	MIN_CONTIG_SCORE = atof(argv[5]);
-//
-//	MAX_RUNNING_THREADS = atoi(argv[6]);
-//
-//	if (argc >= 8) {
-//		unaligned_input_file = argv[7];
-//	}
-//
-//	char* vjf_v_file = argv[8];
-//	char* vjf_j_file = argv[9];
-//	int vjf_max_dist = atoi(argv[10]);
-//	int vjf_min_win = atoi(argv[11]);
-//	int vjf_max_win = atoi(argv[12]);
-//	char vjf_j_conserved = argv[13][0];
-//	int vjf_window_span = atoi(argv[14]);
-//	int vjf_j_extension = atoi(argv[15]);
-//	char* vdj_fasta = argv[16];
-//	char* v_region = argv[17];
-//	char* c_region = argv[18];
-//	INSERT_LEN = atoi(argv[19]);
-//	FILTER_READ_FLOOR = atoi(argv[20]);
-//	int kmer = atoi(argv[21]);
-//	ROOT_SIMILARITY_FILE = argv[22];
-//	VREGION_KMER_SIZE = atoi(argv[23]);
-//	MIN_ROOT_HOMOLOGY_SCORE = atoi(argv[24]);
-//	READ_SPAN = atoi(argv[25]);
-//	MATE_SPAN = atoi(argv[26]);
-//	ALLOW_CDR3_SUBSTRINGS = atoi(argv[27]);
-//	EVAL_START = atoi(argv[28]);
-//	EVAL_STOP = atoi(argv[29]);
-//	CONTIG_SIZE = EVAL_STOP-EVAL_START+1;
-//
-//	fprintf(stderr, "mnf: %d\n", min_node_freq);
-//	fprintf(stderr, "mbq: %d\n", min_base_quality);
-//	fprintf(stderr, "kmer: %d\n", kmer);
 
 	CONTIG_SIZE = p.eval_stop - p.eval_start+1;
 	read_length = p.read_len;
