@@ -72,30 +72,30 @@ void set_default_params(params* p) {
 }
 void usage() {
 	fprintf(stderr, "vdjer \n");
-	fprintf(stderr, "--in <input_bam>\n");
-	fprintf(stderr, "--chain <IGH|IGK|IGL>\n");
-	fprintf(stderr, "--ref-dir </path/to/vdjer/ref/dir>\n");
-	fprintf(stderr, "--mf <min node frequency (default: 3)>\n");
-	fprintf(stderr, "--mq <min base quality (default: 90)>\n");
-	fprintf(stderr, "--rl <read length>\n");
-	fprintf(stderr, "--ms <min contig score (default: -5)\n");
-	fprintf(stderr, "--t <threads (default: 1)\n");
-	fprintf(stderr, "--am <anchor mismatches (default: 4)\n");
-	fprintf(stderr, "--miw <min window length between conserved amino acids>\n");
-	fprintf(stderr, "--maw <max window length between conserved amino acids>\n");
-	fprintf(stderr, "--jc <conserved J amino acid (W|F)\n");
-	fprintf(stderr, "--ws <window span (default: 486)\n");
-	fprintf(stderr, "--jext <J extension (default: 162)\n");
-	fprintf(stderr, "--vr <V region locus (chr:star-stop)>\n");
-	fprintf(stderr, "--cr <C region locus>\n");
-	fprintf(stderr, "--ins <expected / median insert length>\n");
-	fprintf(stderr, "--rf <read filter floor (default: 1)\n");
-	fprintf(stderr, "--k <kmer size (default: 35)>\n");
-	fprintf(stderr, "--mrs <min source node homology score (default: 30)\n");
-	fprintf(stderr, "--rs <read span distance (default: 35)>\n");
-	fprintf(stderr, "--rs <mate span distance (default: 48)>\n");
-	fprintf(stderr, "--e0 <start position for contig filtering (default: 50)>\n");
-	fprintf(stderr, "--e1 <stop position for contig filtering (default: 390)>\n");
+	fprintf(stderr, "\t--in <input_bam>\n");
+	fprintf(stderr, "\t--chain <IGH|IGK|IGL>\n");
+	fprintf(stderr, "\t--ref-dir </path/to/vdjer/ref/dir>\n");
+	fprintf(stderr, "\t--mf <min node frequency (default: 3)>\n");
+	fprintf(stderr, "\t--mq <min base quality (default: 90)>\n");
+	fprintf(stderr, "\t--rl <read length>\n");
+	fprintf(stderr, "\t--ms <min contig score (default: -5)\n");
+	fprintf(stderr, "\t--t <threads (default: 1)\n");
+	fprintf(stderr, "\t--am <anchor mismatches (default: 4)\n");
+	fprintf(stderr, "\t--miw <min window length between conserved amino acids>\n");
+	fprintf(stderr, "\t--maw <max window length between conserved amino acids>\n");
+	fprintf(stderr, "\t--jc <conserved J amino acid (W|F)\n");
+	fprintf(stderr, "\t--ws <window span (default: 486)\n");
+	fprintf(stderr, "\t--jext <J extension (default: 162)\n");
+	fprintf(stderr, "\t--vr <V region locus (chr:start-stop)>\n");
+	fprintf(stderr, "\t--cr <C region locus>\n");
+	fprintf(stderr, "\t--ins <expected / median insert length>\n");
+	fprintf(stderr, "\t--rf <read filter floor (default: 1)\n");
+	fprintf(stderr, "\t--k <kmer size (default: 35)>\n");
+	fprintf(stderr, "\t--mrs <min source node homology score (default: 30)\n");
+	fprintf(stderr, "\t--rs <read span distance (default: 35)>\n");
+	fprintf(stderr, "\t--ms <mate span distance (default: 48)>\n");
+	fprintf(stderr, "\t--e0 <start position for contig filtering (default: 50)>\n");
+	fprintf(stderr, "\t--e1 <stop position for contig filtering (default: 390)>\n");
 }
 
 void print_params(params* p) {
@@ -217,15 +217,23 @@ char parse_params(int argc, char** argv, params* p) {
 
 	set_default_params(p);
 
-	for (int i=1; i<argc-1; i+=2) {
+	for (int i=1; i<argc; i+=2) {
 		char* param = argv[i];
-		char* value = argv[i+1];
-
 
 		if (!strcmp(param, "--help")) {
 			usage();
 			exit(0);
-		} else if (!strcmp(param, "--in")) {
+		}
+
+		if (i+1 >= argc) {
+			fprintf(stderr, "Missing value for param: %s\n", param);
+			usage();
+			exit(-1);
+		}
+
+		char* value = argv[i+1];
+
+		if (!strcmp(param, "--in")) {
 			p->input_bam = value;
 		} else if (!strcmp(param, "--chain")) {
 			set_chain_info(p, value);
@@ -283,6 +291,8 @@ char parse_params(int argc, char** argv, params* p) {
 			p->eval_start = atoi(value);
 		} else if (!strcmp(param, "--e1")) {
 			p->eval_stop = atoi(value);
+		} else {
+			fprintf(stderr, "Invalid param: %s\n", param);
 		}
 	}
 
