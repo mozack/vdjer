@@ -1106,7 +1106,7 @@ void dump_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes
 	FILE* fp = fopen(filename, "w");
 
 	// Output edges
-	fprintf(fp, "digraph vdjician {\n//\tEdges\n");
+	fprintf(fp, "digraph vdjer {\n//\tEdges\n");
 	for (dense_hash_map<const char*, struct node*, my_hash, eqstr>::const_iterator it = nodes->begin();
 				 it != nodes->end(); ++it) {
 
@@ -1407,7 +1407,7 @@ char* assemble(const char* input,
 
 	print_status("POST_CONDENSE_GRAPH");
 
-	dump_graph(nodes, "vdjician.dot");
+	dump_graph(nodes, "vdjer.dot");
 
 	int contig_count = 0;
 	char truncate_output = 0;
