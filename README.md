@@ -10,7 +10,7 @@ V'DJer accepts a sorted and indexed BAM file mapped to hg38 as input.  We curren
 use STAR for alignment.  At the end of a run assembled contigs will appear in
 ```vdj_contigs.fa``` and reads aligned to those contigs are written to ```stdout```
 
-The V'DJer output is suitable for use by downstream quantification tools such as RSEM.
+The V'DJer output is suitable for use by downstream quantification tools such as [RSEM](http://deweylab.github.io/RSEM/).
 
 ## Getting the code and building the software
 
@@ -37,14 +37,14 @@ generated in the current working directory:
 The above runs on the IgH chain with read length of 50, 8 threads and median insert length of 175.
 
 ## Important Parameters
-```
---in <input BAM>
---rl <read length>
---t <threads>
---ins <median insert size>
---chain <IGH|IGK|IGL>
---ref-dir <chain specific reference directory>
-```
+parameter | value
+------ | -------
+--in | input BAM
+--rl | read length
+--t | num threads
+--ins | median insert size
+--chain | one of: IGH, IGK or IGL
+--ref-dir | chain specific reference directory
 
 ## Demo
 See demo.bash and quant_demo.bash under the demo directory for an example of running V'DJer.
