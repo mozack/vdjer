@@ -18,3 +18,4 @@ VDJER=../vdjer
 # Assembled contigs appear in vdj_contigs.fa
 # Reads mapped to contigs appear in vdjer.sam
 $VDJER --in star.sort.bam --rl 50 --t 4 --ins 175 --chain IGH --ref-dir $VDJER_REF_DIR > vdjer.sam 2> vdjer.log
+
