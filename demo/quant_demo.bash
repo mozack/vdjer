@@ -5,7 +5,7 @@
 # Run this after running demo.bash
 # Quantification results will appear in: rsem_results.isoforms.results
 
-# Update 
+# Set the following to your RSEM installation directory
 RSEM=/path/to/rsem-1.2.21
 
 if [ -s "vdj_contigs.fa" ]; then
