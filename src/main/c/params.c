@@ -66,8 +66,8 @@ void set_default_params(params* p) {
 	p->min_source_homology_score = 30;
 	p->filter_read_span = 35;
 	p->filter_mate_span = 48;
-	p->eval_start = 50;
-	p->eval_stop = 390;
+	p->eval_start = 52;
+	p->eval_stop = 411;
 	p->threads = 1;
 	p->window_overlap_check_size = 320;
 }
@@ -92,11 +92,12 @@ void usage() {
 	fprintf(stderr, "\t--ins <expected / median insert length>\n");
 	fprintf(stderr, "\t--rf <read filter floor (default: 1)\n");
 	fprintf(stderr, "\t--k <kmer size (default: 35)>\n");
+	fprintf(stderr, "\t--vk <vregion kmer size (default: 15)>\n");
 	fprintf(stderr, "\t--mrs <min source node homology score (default: 30)\n");
 	fprintf(stderr, "\t--rs <read span distance (default: 35)>\n");
 	fprintf(stderr, "\t--ms <mate span distance (default: 48)>\n");
-	fprintf(stderr, "\t--e0 <start position for contig filtering (default: 50)>\n");
-	fprintf(stderr, "\t--e1 <stop position for contig filtering (default: 390)>\n");
+	fprintf(stderr, "\t--e0 <start position for contig filtering (default: 52)>\n");
+	fprintf(stderr, "\t--e1 <stop position for contig filtering (default: 411)>\n");
 	fprintf(stderr, "\t--wo <window overlap check size>\n");
 }
 
