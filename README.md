@@ -23,6 +23,8 @@ Pre-built human indices and references can be downloaded from here: TODO
 
 The archive must be untarred and decompressed for use by V'DJer
 
+A reference directory is included for each chain type.
+
 ## Sample usage:
 
 The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa and vdjician.sam
@@ -32,10 +34,15 @@ generated in the current working directory:
 
 The above runs on the IgH chain with read length of 50, 8 threads and median insert length of 175.
 
-## Parameters
+## Important Parameters
 ```
 --in <input BAM>
 --rl <read length>
 --t <threads>
---ins <median insert size.
+--ins <median insert size>
+--chain <IGH|IGK|IGL>
+--ref-dir <chain specific reference directory>
 ```
+
+## Demo
+See demo.bash and quant_demo.bash under the demo directory for an example of running V'DJer.
