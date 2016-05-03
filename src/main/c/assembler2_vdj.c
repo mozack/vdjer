@@ -86,6 +86,7 @@ pthread_mutex_t contig_writer_mutex;
 int running_threads = 0;
 
 // Tracks vjf windows
+const char* DELETED_KEY = "<DELETED>";
 dense_hash_map<const char*, const char*, contig_hash, contig_eqstr> vjf_windows;
 
 dense_hash_set<const char*, vjf_hash, vjf_eqstr> vjf_window_candidates;
@@ -869,6 +870,33 @@ void output_contig(struct contig* contig, int& contig_count, const char* prefix,
 
 void output_windows() {
 
+	// Remove overlapping windows prior to outputting.
+	for (dense_hash_map<const char*, const char*, contig_hash, contig_eqstr>::iterator it1=vjf_windows.begin(); it1!=vjf_windows.end(); it1++) {
+		char* window1 = (char*) it1->first;
+
+		char should_remove = 0;
+
+		for (dense_hash_map<const char*, const char*, contig_hash, contig_eqstr>::iterator it2=vjf_windows.begin(); it2!=vjf_windows.end(); it2++) {
+			char* window2 = (char*) it2->first;
+
+			for (int i=1; i<CONTIG_SIZE-p.window_overlap_check_size; i++) {
+				if (strncmp(window1+i, window2, p.window_overlap_check_size) == 0) {
+					should_remove = 1;
+					break;
+				}
+			}
+
+			if (should_remove) {
+				break;
+			}
+		}
+
+		if (should_remove) {
+			vjf_windows.erase(it1);
+		}
+	}
+
+	// Now output remaining contigs to file
 	char* contig_file = "vdj_contigs.fa";
 	FILE* fp = fopen(contig_file, "w");
 	int contig_num = 1;
@@ -1495,6 +1523,7 @@ int main(int argc, char* argv[]) {
 	score_seq_init(p.kmer, 1000, p.source_sim_file);
 
 	vjf_windows.set_empty_key(NULL);
+	vjf_windows.set_deleted_key(DELETED_KEY);
 	vjf_window_candidates.set_empty_key(NULL);
 	vjf_init(p.v_anchors, p.j_anchors, p.anchor_mismatches, p.vj_min_win, p.vj_max_win,
 			p.j_conserved, p.window_span, p.j_extension);

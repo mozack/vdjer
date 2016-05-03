@@ -29,6 +29,7 @@ struct params {
 	int filter_mate_span;
 	int eval_start;
 	int eval_stop;
+	int window_overlap_check_size;
 };
 
 char parse_params(int argc, char** argv, params* p);

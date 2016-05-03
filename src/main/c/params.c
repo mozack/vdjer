@@ -69,6 +69,7 @@ void set_default_params(params* p) {
 	p->eval_start = 50;
 	p->eval_stop = 390;
 	p->threads = 1;
+	p->window_overlap_check_size = 320;
 }
 void usage() {
 	fprintf(stderr, "vdjer \n");
@@ -96,6 +97,7 @@ void usage() {
 	fprintf(stderr, "\t--ms <mate span distance (default: 48)>\n");
 	fprintf(stderr, "\t--e0 <start position for contig filtering (default: 50)>\n");
 	fprintf(stderr, "\t--e1 <stop position for contig filtering (default: 390)>\n");
+	fprintf(stderr, "\t--wo <window overlap check size>\n");
 }
 
 void print_params(params* p) {
@@ -130,6 +132,8 @@ void print_params(params* p) {
 	fprintf(stderr, "%s\t%d\n", "span for mate base filtering", p->filter_mate_span);
 	fprintf(stderr, "%s\t%d\n", "start point for contig filtering", p->eval_start);
 	fprintf(stderr, "%s\t%d\n", "stop point for contig filtering", p->eval_stop);
+	// Length of window to check for overlap.  Handles cases where multiple CDR3 windows are detected in similar contigs.
+	fprintf(stderr, "%s\t%d\n", "window overlap check size", p->window_overlap_check_size);
 }
 
 char file_exists(char* filename) {
@@ -291,6 +295,8 @@ char parse_params(int argc, char** argv, params* p) {
 			p->eval_start = atoi(value);
 		} else if (!strcmp(param, "--e1")) {
 			p->eval_stop = atoi(value);
+		} else if (!strcmp(param, "--wo")) {
+			p->window_overlap_check_size = atoi(value);
 		} else {
 			fprintf(stderr, "Invalid param: %s\n", param);
 		}
