@@ -19,6 +19,8 @@ Use a recent release: https://github.com/mozack/vdjer/releases
 To compile, just cd into the vdjer directory and type ```make```.  An executable named
 ```vdjer``` will be created.
 
+To date, V'DJer has been tested only on linux systems.
+
 Pre-built human indices and references can be downloaded from here: https://github.com/mozack/vdjer/releases/download/v0.10_reference/vdjer_human_references.tar.gz
 
 The archive must be untarred and decompressed for use by V'DJer
