@@ -29,10 +29,10 @@ A reference directory is included for each chain type.
 
 ## Sample usage:
 
-The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa and vdjician.sam
-generated in the current working directory:
+The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa
+generated in the current working directory and read alignments written to vdjer.sam:
 
-```vdjer --in star.sort.bam --rl 50 --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh```
+```vdjer --in star.sort.bam --rl 50 --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh > vdjer.sam```
 
 The above runs on the IgH chain with read length of 50, 8 threads and median insert length of 175.
 
