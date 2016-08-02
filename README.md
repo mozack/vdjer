@@ -58,7 +58,7 @@ Decreasing mq and mf from the defaults results in less aggressive graph pruning.
 Reducing rs and ms results in less aggressive coverage based filtering
 Decreasing mcs allows for more exhaustive graph traversal
 
-The values used here match those used when running sensitive mode in the V'DJer paper. 
+The values used in this example match those used when running sensitive mode in the V'DJer paper. 
 
 ## Demo
 See demo.bash and quant_demo.bash under the demo directory for an example of running V'DJer.
