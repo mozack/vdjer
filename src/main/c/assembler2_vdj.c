@@ -34,6 +34,7 @@ using google::dense_hash_set;
 // bam_read.c
 extern void extract(char* bam_file, char* vdj_fasta, char* v_region, char* c_region,
 		char*& primary_buf, char*& secondary_buf);
+extern int get_read_length(char* bam_file);
 
 // coverage.c
 extern char coverage_is_valid(int read_length, int contig_len, int eval_start, int eval_stop, int read_span,
@@ -1517,7 +1518,8 @@ int main(int argc, char* argv[]) {
 	VREGION_KMER_SIZE = p.vregion_kmer_size;
 
 	CONTIG_SIZE = p.eval_stop - p.eval_start+1;
-	read_length = p.read_len;
+	read_length = get_read_length(p.input_bam);
+	fprintf(stderr, "read length:\t%d", read_length);
 
 	// Initialize seq scoring for root node evalulation
 	score_seq_init(p.kmer, 1000, p.source_sim_file);
@@ -1548,7 +1550,7 @@ int main(int argc, char* argv[]) {
                 false,
                 50000000,
                 500000000,
-                p.read_len,
+                read_length,
                 p.kmer);
 }
 

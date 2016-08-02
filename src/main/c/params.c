@@ -78,7 +78,6 @@ void usage() {
 	fprintf(stderr, "\t--ref-dir </path/to/vdjer/ref/dir>\n");
 	fprintf(stderr, "\t--mf <min node frequency (default: 3)>\n");
 	fprintf(stderr, "\t--mq <min base quality (default: 90)>\n");
-	fprintf(stderr, "\t--rl <read length>\n");
 	fprintf(stderr, "\t--mcs <min contig score (default: -5)\n");
 	fprintf(stderr, "\t--t <threads (default: 1)\n");
 	fprintf(stderr, "\t--am <anchor mismatches (default: 4)\n");
@@ -106,7 +105,6 @@ void print_params(params* p) {
 	fprintf(stderr, "%s\t%s\n", "input", p->input_bam);
 	fprintf(stderr, "%s\t%d\n", "min node freq", p->min_node_freq);
 	fprintf(stderr, "%s\t%d\n", "min base qual", p->min_base_quality);
-	fprintf(stderr, "%s\t%d\n", "max read length", p->read_len);
 	fprintf(stderr, "%s\t%f\n", "min contig score (log scaled)", p->min_contig_score);
 	fprintf(stderr, "%s\t%d\n", "num threads", p->threads);
 	fprintf(stderr, "%s\t%s\n", "v anchor file", p->v_anchors);
@@ -150,11 +148,6 @@ void validate_params(params* p) {
 		ok = 0;
 	} else if (!file_exists(p->input_bam)) {
 		fprintf(stderr, "Could not find input file: %s\n", p->input_bam);
-		ok = 0;
-	}
-
-	if (p->read_len <= 0) {
-		fprintf(stderr, "Read length must be specified and > 0\n");
 		ok = 0;
 	}
 
@@ -248,8 +241,6 @@ char parse_params(int argc, char** argv, params* p) {
 			p->min_node_freq = atoi(value);
 		} else if (!strcmp(param, "--mq")) {
 			p->min_base_quality = atoi(value);
-		} else if (!strcmp(param, "--rl")) {
-			p->read_len = atoi(value);
 		} else if (!strcmp(param, "--mcs")) {
 			p->min_contig_score = atof(value);
 		} else if (!strcmp(param, "--t")) {
