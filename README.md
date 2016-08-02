@@ -2,7 +2,7 @@
 
 V'DJer uses customized read extraction, assembly and V(D)J rearrangement detection 
 and filtering to produce contigs representing the most abundant portions of the BCR
-repetoire.  V'DJer operates upon short read mRNA-Seq data allowing sequence analysis
+repetoire.  V'DJer operates upon bulk short read mRNA-Seq data allowing sequence analysis
 typically done using specialized long read sequencing.  The software can be run on
 BCR heavy (IgH) and light (Igk/IgL) chains.
 
@@ -32,7 +32,7 @@ A reference directory is included for each chain type.
 The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa
 generated in the current working directory and read alignments written to vdjer.sam:
 
-```vdjer --in star.sort.bam --rl 50 --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh > vdjer.sam 2> vdjer.log```
+```vdjer --in star.sort.bam --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh > vdjer.sam 2> vdjer.log```
 
 The above runs on the IgH chain with read length of 50, 8 threads and median insert length of 175.
 
@@ -40,11 +40,22 @@ The above runs on the IgH chain with read length of 50, 8 threads and median ins
 parameter | value
 ------ | -------
 --in | input BAM
---rl | read length
 --t | num threads
 --ins | median insert size
 --chain | one of: IGH, IGK or IGL
 --ref-dir | chain specific reference directory
+
+## Sensitive mode:
+
+In cases where a sample has low BCR expression levels, one may opt to run V'DJer using more sensitive settings.
+Example command:
+
+```vdjer --in star.sort.bam --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh --k 25 
+--mq 60 --mf 2 --rs 25 --ms 2 --mcs -5.5 > vdjer.sam 2> vdjer.log ```
+
+Decreasing mq and mf from the defaults results in less aggressive graph pruning.
+Reducing rs and ms results in less aggressive coverage based filtering
+Decreasing mcs allows for more exhaustive graph traversal
 
 ## Demo
 See demo.bash and quant_demo.bash under the demo directory for an example of running V'DJer.
