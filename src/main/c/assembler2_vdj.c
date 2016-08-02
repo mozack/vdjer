@@ -1163,7 +1163,7 @@ void dump_graph(dense_hash_map<const char*, struct node*, my_hash, eqstr>* nodes
 		node* curr_node = it->second;
 
 		// Skip orphans
-		if (!curr_node->is_filtered && (curr_node->toNodes != NULL || curr_node->fromNodes != NULL)) {
+		if (!curr_node->is_filtered) {
 			if (curr_node->is_condensed) {
 				if (curr_node->is_root) {
 					fprintf(fp, "\tv_%d [label=\"%s\",shape=box,color=green]\n", curr_node->id, curr_node->seq);
