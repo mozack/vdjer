@@ -79,7 +79,7 @@ void usage() {
 	fprintf(stderr, "\t--mf <min node frequency (default: 3)>\n");
 	fprintf(stderr, "\t--mq <min base quality (default: 90)>\n");
 	fprintf(stderr, "\t--rl <read length>\n");
-	fprintf(stderr, "\t--ms <min contig score (default: -5)\n");
+	fprintf(stderr, "\t--mcs <min contig score (default: -5)\n");
 	fprintf(stderr, "\t--t <threads (default: 1)\n");
 	fprintf(stderr, "\t--am <anchor mismatches (default: 4)\n");
 	fprintf(stderr, "\t--miw <min window length between conserved amino acids>\n");
