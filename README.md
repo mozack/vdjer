@@ -48,6 +48,7 @@ parameter | value
 ## Sensitive mode:
 
 In cases where a sample has low BCR expression levels, one may opt to run V'DJer using more sensitive settings.
+Running sensitive mode on samples with abundant BCR expression levels may result in extremely high computational costs.
 Example command:
 
 ```vdjer --in star.sort.bam --t 8 --ins 175 --chain IGH --ref-dir vdjer_human_references/igh --k 25 
@@ -56,6 +57,8 @@ Example command:
 Decreasing mq and mf from the defaults results in less aggressive graph pruning.
 Reducing rs and ms results in less aggressive coverage based filtering
 Decreasing mcs allows for more exhaustive graph traversal
+
+The values used here match those used when running sensitive mode in the V'DJer paper. 
 
 ## Demo
 See demo.bash and quant_demo.bash under the demo directory for an example of running V'DJer.
