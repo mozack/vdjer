@@ -27,7 +27,13 @@ The archive must be untarred and decompressed for use by V'DJer
 
 A reference directory is included for each chain type.
 
-## Sample usage:
+## Usage:
+
+V'DJer operates on paired end reads.  Single end reads are not currently supported.
+When mapping with STAR unmapped reads must be included in the BAM file (this is not 
+STAR's default behavior).  Include the unmapped reads using the following param:
+
+```--outSAMunmapped Within```
 
 The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa
 generated in the current working directory and read alignments written to vdjer.sam:
@@ -62,3 +68,6 @@ The values used in this example match those used when running sensitive mode in 
 
 ## Demo
 See demo.bash and quant_demo.bash under the demo directory for an example of running V'DJer.
+
+## Manuscript
+https://doi.org/10.1093/bioinformatics/btw526
