@@ -259,8 +259,8 @@ char* advance_read_buf_ptr(char* &read_buf, char* &read_buf_ptr, int length) {
 	return read_buf_ptr;
 }
 
-// Pulls read length from first read in bam file
-// DOES NOT SUPPORT VARIABLE READ LENGTHS!!!
+// Identify maximum read length in BAM file
+// TODO: Do this during read extraction
 int get_read_length(char* bam_file) {
 	int read_len = -1;
 
@@ -269,13 +269,18 @@ int get_read_length(char* bam_file) {
     bam1_t *b = bam_init1();
 
 	char seq[256];
-	if (sam_read1(bam.in, bam.header, b) >= 0) {
+
+	while (sam_read1(bam.in, bam.header, b) >= 0) {
 
 		char* qname = bam_get_qname(b);
 		bam_get_seq_str(b, seq);
 
-		read_len = b->core.l_qseq;
-	} else {
+		if (b->core.l_qseq > read_len) {
+			read_len = b->core.l_qseq;
+		}
+	}
+
+	if (read_len <= 0) {
 		fprintf(stderr, "Error retrieving read length from: %s\n", bam_file);
 		exit(-1);
 	}
