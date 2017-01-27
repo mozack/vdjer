@@ -30,10 +30,12 @@ A reference directory is included for each chain type.
 ## Usage:
 
 V'DJer operates on paired end reads.  Single end reads are not currently supported.
-When mapping with STAR unmapped reads must be included in the BAM file (this is not 
+When mapping with STAR, unmapped reads must be included in the BAM file (this is not 
 STAR's default behavior).  Include the unmapped reads using the following param:
 
 ```--outSAMunmapped Within```
+
+Be sure to sort and index the BAM file.
 
 The following runs vdjer on the input star.sort.bam file with vdj_contigs.fa
 generated in the current working directory and read alignments written to vdjer.sam:
