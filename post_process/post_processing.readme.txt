@@ -1,0 +1,74 @@
+# The commands and scripts in this directory are for demonstration purposes only and should not be executed directly.
+# Please adapt to your own needs and local installations
+
+
+#######################################################################################
+# Run RSEM on output of all samples
+# This step must be run on each individual sample under the sample specific directory
+
+RSEM=/datastore/nextgenout4/seqware-analysis/lmose/software/rsem/1.2.21/rsem-1.2.21
+
+if [ -s "vdj_contigs.fa" ]; then
+  samtools view -1 -bS  vdjician.sam > vdjician.bam
+  samtools view -H vdjician.bam > vdjician.namesort.sam
+  samtools view vdjician.bam | tr '\t' '~' | paste - - | sort -S 20G | awk '{print $1 "\n" $2}' | tr '~' '\t' >> vdjician.namesort.sam
+  samtools view -bS vdjician.namesort.sam > vdjician.namesort.bam
+
+  # RSEM prepare ref
+  $RSEM/rsem-prepare-reference  vdj_contigs.fa rsem_vdj
+
+  # RSEM calc expression (hard coded to 8 threads here)
+  $RSEM/rsem-calculate-expression -p 8 --paired-end --bam vdjician.namesort.bam rsem_vdj rsem_results
+else
+  touch rsem_results.isoforms.results
+fi
+
+#######################################################################################
+# Operations below here apply to the entire cohort (i.e. not sample level)
+
+
+#######################################################################################
+# Gather all predicted sequences into a single fasta file (for the chain of interest - Igh here).
+cat */igh/vdjer/vdj_contigs.fa | grep -v ">" | sort | uniq | cat -n | awk '{print ">seq_" $1 "\n" $2}' > test_process/all_sequences.fa
+
+#
+# Submit all_sequences.fa to High-VQuest.  Download and unpack results when done.
+
+#######################################################################################
+# Call isotypes
+# Use the same all_sequences fasta file to call isotypes
+# Uses STAR to map the input sequences to the reference genome and calls isotypes based upon mapped location
+# Output will be written to isotypes.txt in the current working directory
+# Various temp files are written to disk and not cleaned up here.
+#
+# This step is only applicable for the heavy chain.
+/datastore/nextgenout4/seqware-analysis/lmose/vdj/scripts/call_isotypes.bash ../all_sequences.fa > call_isotypes.log
+
+
+#######################################################################################
+# Gather various vdjer statistics and cluster results.
+#
+# This step requires a specific directory hierarchy of
+# <result_dir>/<sample>/<chain>/vdjer/<vdjer_and_rsem_output_here>
+# For example: /datastore/nextgenout4/seqware-analysis/lmose/gcp/studies/anti_pd1/results/GSM2069823/igh/vdjer
+
+# Sequence fasta from first step
+SEQUENCES=test_process/all_sequences.fa
+# Output of isotype calling.  Can be set to no for light chains.
+ISOTYPES=isotypes.txt
+# List of sample names.  Entries here should match <sample> in the directory hierarchy
+INVENTORY=final_inventory.txt
+# Directory containing sample directories
+RESULT_DIR=/datastore/nextgenout4/seqware-analysis/lmose/gcp/studies/anti_pd1/results
+# Path to VQuest summary file
+VQUEST=/datastore/nextgenout4/seqware-analysis/lmose/gcp/studies/anti_pd1/results/vquest/igh/1_Summary.txt
+# Chain - needs to match <chain> in the directory hierarchy above
+CHAIN=igh
+# Path to file containing read counts for each sample in format <sample_name>tab<count>
+# Distinct mapped reads can be calculated using:  samtools view -F 0x104 <bam_file> | wc -l
+READ_COUNTS=/datastore/nextgenout4/seqware-analysis/lmose/gcp/studies/anti_pd1/results/read_counts/sample_read_counts.txt
+
+python /datastore/nextgenout4/seqware-analysis/lmose/gcp/scripts/collect_vdjer_stats.py $SEQUENCES $ISOTYPES $INVENTORY $RESULT_DIR $VQUEST $CHAIN $READ_COUNTS | python /datastore/nextgenout4/seqware-analysis/lmose/gcp/scripts/cluster_results.py > test.igh.txt
+
+
+
