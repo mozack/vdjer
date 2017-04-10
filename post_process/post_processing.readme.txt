@@ -1,4 +1,5 @@
 # The commands and scripts in this directory are for demonstration purposes only and should not be executed directly.
+# Hardcoded paths within these scripts will not correspond to your directory hierarchies
 # Please adapt to your own needs and local installations
 
 
